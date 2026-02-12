@@ -10,6 +10,11 @@ const router = useRouter()
 const route = useRoute()
 
 onMounted(async () => {
+  // Apply saved theme
+  const saved = localStorage.getItem('theme')
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+  document.documentElement.classList.toggle('dark', saved === 'dark' || (!saved && prefersDark))
+
   await auth.checkAuth()
 })
 

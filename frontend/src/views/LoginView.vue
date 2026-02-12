@@ -30,13 +30,13 @@ async function handleLogin() {
 </script>
 
 <template>
-  <div class="flex min-h-screen items-center justify-center bg-background">
+  <div class="flex min-h-screen items-center justify-center bg-background menacing-animated">
     <Card class="w-full max-w-sm">
       <CardHeader class="text-center">
         <div class="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-lg bg-primary">
           <Link class="h-6 w-6 text-primary-foreground" />
         </div>
-        <CardTitle class="text-2xl">link-anime</CardTitle>
+        <CardTitle class="text-3xl tracking-wider">link-anime</CardTitle>
         <CardDescription>Enter your password to continue</CardDescription>
       </CardHeader>
       <CardContent>

@@ -39,75 +39,105 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --font-display: "Bebas Neue", sans-serif;
 }
 
+/* ============================================================
+   Steel Ball Run Theme — Light
+   Steel blue, warm white, dusty gold accents
+   ============================================================ */
 :root {
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.141 0.005 285.823);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.141 0.005 285.823);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.141 0.005 285.823);
-  --primary: oklch(0.21 0.006 285.885);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.967 0.001 286.375);
-  --secondary-foreground: oklch(0.21 0.006 285.885);
-  --muted: oklch(0.967 0.001 286.375);
-  --muted-foreground: oklch(0.552 0.016 285.938);
-  --accent: oklch(0.967 0.001 286.375);
-  --accent-foreground: oklch(0.21 0.006 285.885);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.92 0.004 286.32);
-  --input: oklch(0.92 0.004 286.32);
-  --ring: oklch(0.705 0.015 286.067);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.141 0.005 285.823);
-  --sidebar-primary: oklch(0.21 0.006 285.885);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.967 0.001 286.375);
-  --sidebar-accent-foreground: oklch(0.21 0.006 285.885);
-  --sidebar-border: oklch(0.92 0.004 286.32);
-  --sidebar-ring: oklch(0.705 0.015 286.067);
+  --radius: 0.5rem;
+  /* Warm off-white with a hint of parchment */
+  --background: oklch(0.97 0.005 80);
+  --foreground: oklch(0.18 0.02 260);
+  /* Cards: clean white with subtle warmth */
+  --card: oklch(0.995 0.002 80);
+  --card-foreground: oklch(0.18 0.02 260);
+  /* Popovers */
+  --popover: oklch(0.995 0.002 80);
+  --popover-foreground: oklch(0.18 0.02 260);
+  /* Primary: Steel blue */
+  --primary: oklch(0.45 0.12 250);
+  --primary-foreground: oklch(0.98 0 0);
+  /* Secondary: Dusty warm grey */
+  --secondary: oklch(0.92 0.01 70);
+  --secondary-foreground: oklch(0.25 0.02 260);
+  /* Muted */
+  --muted: oklch(0.93 0.008 75);
+  --muted-foreground: oklch(0.50 0.02 260);
+  /* Accent: Desert gold */
+  --accent: oklch(0.78 0.12 75);
+  --accent-foreground: oklch(0.18 0.02 260);
+  /* Destructive */
+  --destructive: oklch(0.55 0.22 25);
+  /* Borders */
+  --border: oklch(0.88 0.015 75);
+  --input: oklch(0.88 0.015 75);
+  --ring: oklch(0.45 0.12 250);
+  /* Charts */
+  --chart-1: oklch(0.45 0.12 250);
+  --chart-2: oklch(0.70 0.12 75);
+  --chart-3: oklch(0.55 0.08 200);
+  --chart-4: oklch(0.65 0.15 40);
+  --chart-5: oklch(0.50 0.10 300);
+  /* Sidebar */
+  --sidebar: oklch(0.22 0.03 255);
+  --sidebar-foreground: oklch(0.92 0.01 250);
+  --sidebar-primary: oklch(0.70 0.12 75);
+  --sidebar-primary-foreground: oklch(0.15 0.02 260);
+  --sidebar-accent: oklch(0.30 0.04 255);
+  --sidebar-accent-foreground: oklch(0.92 0.01 250);
+  --sidebar-border: oklch(0.32 0.04 255);
+  --sidebar-ring: oklch(0.45 0.12 250);
 }
 
+/* ============================================================
+   Steel Ball Run Theme — Dark
+   Deep navy steel, moonlit desert, golden glow
+   ============================================================ */
 .dark {
-  --background: oklch(0.141 0.005 285.823);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.21 0.006 285.885);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.21 0.006 285.885);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.92 0.004 286.32);
-  --primary-foreground: oklch(0.21 0.006 285.885);
-  --secondary: oklch(0.274 0.006 286.033);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.274 0.006 286.033);
-  --muted-foreground: oklch(0.705 0.015 286.067);
-  --accent: oklch(0.274 0.006 286.033);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.552 0.016 285.938);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.21 0.006 285.885);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.274 0.006 286.033);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.552 0.016 285.938);
+  --background: oklch(0.14 0.025 255);
+  --foreground: oklch(0.93 0.01 250);
+  /* Cards: slightly lighter navy */
+  --card: oklch(0.19 0.03 255);
+  --card-foreground: oklch(0.93 0.01 250);
+  /* Popovers */
+  --popover: oklch(0.19 0.03 255);
+  --popover-foreground: oklch(0.93 0.01 250);
+  /* Primary: Bright steel blue */
+  --primary: oklch(0.65 0.14 250);
+  --primary-foreground: oklch(0.12 0.02 255);
+  /* Secondary */
+  --secondary: oklch(0.24 0.03 255);
+  --secondary-foreground: oklch(0.90 0.01 250);
+  /* Muted */
+  --muted: oklch(0.24 0.03 255);
+  --muted-foreground: oklch(0.62 0.03 250);
+  /* Accent: Warm gold */
+  --accent: oklch(0.72 0.14 75);
+  --accent-foreground: oklch(0.12 0.02 255);
+  /* Destructive */
+  --destructive: oklch(0.65 0.20 22);
+  /* Borders */
+  --border: oklch(0.28 0.03 255);
+  --input: oklch(0.28 0.03 255);
+  --ring: oklch(0.65 0.14 250);
+  /* Charts */
+  --chart-1: oklch(0.65 0.14 250);
+  --chart-2: oklch(0.72 0.14 75);
+  --chart-3: oklch(0.60 0.10 200);
+  --chart-4: oklch(0.70 0.18 40);
+  --chart-5: oklch(0.60 0.15 300);
+  /* Sidebar */
+  --sidebar: oklch(0.12 0.025 255);
+  --sidebar-foreground: oklch(0.90 0.01 250);
+  --sidebar-primary: oklch(0.72 0.14 75);
+  --sidebar-primary-foreground: oklch(0.12 0.02 255);
+  --sidebar-accent: oklch(0.20 0.03 255);
+  --sidebar-accent-foreground: oklch(0.90 0.01 250);
+  --sidebar-border: oklch(0.25 0.03 255);
+  --sidebar-ring: oklch(0.65 0.14 250);
 }
 
 @layer base {
@@ -116,6 +146,13 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+
+  /* JoJo display font for headings */
+  h1, h2, h3 {
+    font-family: var(--font-display);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
   }
 }
 
@@ -128,4 +165,70 @@
   --normal-bg: var(--popover) !important;
   --normal-text: var(--popover-foreground) !important;
   --normal-border: var(--border) !important;
+}
+
+/* ============================================================
+   ゴゴゴ Menacing effect
+   ============================================================ */
+.menacing {
+  position: relative;
+}
+
+.menacing::before,
+.menacing::after {
+  content: "ゴ";
+  position: absolute;
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  opacity: 0.06;
+  pointer-events: none;
+  user-select: none;
+  color: var(--foreground);
+}
+
+.menacing::before {
+  top: 0.5rem;
+  right: 1rem;
+  transform: rotate(-12deg);
+}
+
+.menacing::after {
+  bottom: 0.5rem;
+  left: 1rem;
+  transform: rotate(8deg);
+}
+
+/* Animated menacing for login page */
+@keyframes menacing-float {
+  0%, 100% {
+    opacity: 0;
+    transform: translateY(0) rotate(-15deg);
+  }
+  50% {
+    opacity: 0.08;
+    transform: translateY(-10px) rotate(-10deg);
+  }
+}
+
+.menacing-animated::before,
+.menacing-animated::after {
+  content: "ゴゴゴ";
+  position: absolute;
+  font-size: 2rem;
+  opacity: 0;
+  pointer-events: none;
+  user-select: none;
+  color: var(--primary);
+  animation: menacing-float 3s ease-in-out infinite;
+}
+
+.menacing-animated::before {
+  top: 10%;
+  right: 5%;
+}
+
+.menacing-animated::after {
+  bottom: 15%;
+  left: 5%;
+  animation-delay: 1.5s;
 }
