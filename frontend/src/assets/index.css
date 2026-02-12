@@ -148,8 +148,8 @@
     @apply bg-background text-foreground;
   }
 
-  /* JoJo display font for headings */
-  h1, h2, h3 {
+  /* JoJo display font for page headings only */
+  h1 {
     font-family: var(--font-display);
     letter-spacing: 0.05em;
     text-transform: uppercase;
