@@ -1,0 +1,28 @@
+# Dependencies
+frontend/node_modules/
+frontend/.bun/
+
+# Build output
+frontend/dist/
+cmd/server/dist/
+
+# Data / runtime
+data/
+*.db
+
+# Environment (contains secrets)
+.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Archives
+*.tar.gz

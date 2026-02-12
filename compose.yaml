@@ -1,0 +1,18 @@
+services:
+  link-anime:
+    build: .
+    container_name: link-anime
+    restart: unless-stopped
+    ports:
+      - "8787:8787"
+    volumes:
+      - ./data:/app/data
+      - /mnt/storage:/data
+    env_file:
+      - .env
+    environment:
+      - PUID=${PUID:-977}
+      - PGID=${PGID:-988}
+      - TZ=${TZ:-Europe/Sofia}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

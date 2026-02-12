@@ -1,0 +1,29 @@
+# Dependencies
+frontend/node_modules/
+frontend/.bun/
+
+# Build output
+frontend/dist/
+cmd/server/dist/
+
+# Data
+data/
+*.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Git
+.git/
+.gitignore
+
+# Docker
+docker-compose.yml
+.env
+
+# Docs
+*.md
+LICENSE
