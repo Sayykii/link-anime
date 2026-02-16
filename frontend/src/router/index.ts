@@ -30,6 +30,11 @@ const router = createRouter({
       component: () => import('@/views/DownloadsView.vue'),
     },
     {
+      path: '/rss',
+      name: 'rss',
+      component: () => import('@/views/RSSView.vue'),
+    },
+    {
       path: '/history',
       name: 'history',
       component: () => import('@/views/HistoryView.vue'),

@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"link-anime/internal/api"
 	"link-anime/internal/auth"
@@ -16,6 +17,7 @@ import (
 	"link-anime/internal/database"
 	"link-anime/internal/notify"
 	"link-anime/internal/qbit"
+	"link-anime/internal/rss"
 	"link-anime/internal/scanner"
 	"link-anime/internal/shoko"
 	"link-anime/internal/ws"
@@ -71,6 +73,12 @@ func main() {
 		Shoko:    shokoClient,
 		Notifier: notifier,
 	}
+
+	// Create RSS poller (getter func reads server.Qbit so reinitClients updates are reflected)
+	poller := rss.NewPoller(hub, func() *qbit.Client { return server.Qbit }, 15*time.Minute)
+	poller.Start()
+	defer poller.Stop()
+	server.Poller = poller
 
 	// Embed frontend static files
 	var staticFS http.FileSystem

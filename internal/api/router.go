@@ -8,6 +8,7 @@ import (
 	"link-anime/internal/config"
 	"link-anime/internal/notify"
 	"link-anime/internal/qbit"
+	"link-anime/internal/rss"
 	"link-anime/internal/shoko"
 	"link-anime/internal/ws"
 
@@ -22,6 +23,7 @@ type Server struct {
 	Qbit     *qbit.Client
 	Shoko    *shoko.Client
 	Notifier *notify.Notifier
+	Poller   *rss.Poller
 }
 
 // NewRouter creates the chi router with all routes and middleware.
@@ -80,6 +82,17 @@ func NewRouter(s *Server, staticFS http.FileSystem) chi.Router {
 			// Shoko
 			r.Post("/shoko/scan", s.handleShokoScan)
 			r.Get("/shoko/test", s.handleShokoTest)
+
+			// RSS Rules
+			r.Get("/rss/rules", s.handleListRSSRules)
+			r.Get("/rss/rule", s.handleGetRSSRule)
+			r.Post("/rss/rules", s.handleCreateRSSRule)
+			r.Put("/rss/rules", s.handleUpdateRSSRule)
+			r.Delete("/rss/rules", s.handleDeleteRSSRule)
+			r.Post("/rss/rules/toggle", s.handleToggleRSSRule)
+			r.Get("/rss/matches", s.handleListRSSMatches)
+			r.Delete("/rss/matches", s.handleClearRSSMatches)
+			r.Post("/rss/poll", s.handleRSSPollNow)
 
 			// WebSocket
 			r.Get("/ws", s.handleWS)

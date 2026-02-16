@@ -9,6 +9,7 @@ import {
   Library,
   Link,
   Download,
+  Rss,
   History,
   Settings,
   LogOut,
@@ -26,6 +27,7 @@ const navItems = [
   { name: 'Library', path: '/library', icon: Library },
   { name: 'Link', path: '/link', icon: Link },
   { name: 'Downloads', path: '/downloads', icon: Download },
+  { name: 'RSS Watch', path: '/rss', icon: Rss },
   { name: 'History', path: '/history', icon: History },
 ]
 

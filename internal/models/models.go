@@ -35,11 +35,11 @@ type DownloadItem struct {
 
 // LinkRequest is the payload for creating hardlinks.
 type LinkRequest struct {
-	Source    string `json:"source"`    // folder/file name in downloads dir
-	Type     string `json:"type"`      // "series" or "movie"
-	Name     string `json:"name"`      // show name or movie name
-	Season   int    `json:"season"`    // season number (series only)
-	DryRun   bool   `json:"dryRun"`
+	Source string `json:"source"` // folder/file name in downloads dir
+	Type   string `json:"type"`   // "series" or "movie"
+	Name   string `json:"name"`   // show name or movie name
+	Season int    `json:"season"` // season number (series only)
+	DryRun bool   `json:"dryRun"`
 }
 
 // LinkResult describes the outcome of a link operation.
@@ -140,15 +140,27 @@ type NyaaResult struct {
 
 // RSSRule defines an auto-download rule.
 type RSSRule struct {
-	ID          int64     `json:"id"`
-	Name        string    `json:"name"`
-	Query       string    `json:"query"`
-	ShowName    string    `json:"showName"`
-	Season      int       `json:"season"`
-	MediaType   string    `json:"mediaType"`
-	MinSeeders  int       `json:"minSeeders"`
-	Resolution  string    `json:"resolution,omitempty"`
-	Enabled     bool      `json:"enabled"`
-	LastCheck   *time.Time `json:"lastCheck,omitempty"`
-	CreatedAt   time.Time `json:"createdAt"`
+	ID         int64      `json:"id"`
+	Name       string     `json:"name"`
+	Query      string     `json:"query"`
+	ShowName   string     `json:"showName"`
+	Season     int        `json:"season"`
+	MediaType  string     `json:"mediaType"`
+	MinSeeders int        `json:"minSeeders"`
+	Resolution string     `json:"resolution,omitempty"`
+	Enabled    bool       `json:"enabled"`
+	LastCheck  *time.Time `json:"lastCheck,omitempty"`
+	CreatedAt  time.Time  `json:"createdAt"`
+	MatchCount int        `json:"matchCount"` // populated by queries, not stored
+}
+
+// RSSMatch records a torrent matched by an RSS rule.
+type RSSMatch struct {
+	ID       int64     `json:"id"`
+	RuleID   int64     `json:"ruleId"`
+	Title    string    `json:"title"`
+	Hash     string    `json:"hash"`
+	Matched  time.Time `json:"matched"`
+	Status   string    `json:"status"`             // "downloaded", "linked", "failed"
+	RuleName string    `json:"ruleName,omitempty"` // populated by join queries
 }

@@ -1,4 +1,4 @@
-import type { LinkRequest, LinkResult, LibraryStats, Show, Movie, DownloadItem, HistoryEntry, ParseResult, Settings, TorrentStatus, NyaaResult } from '@/lib/types'
+import type { LinkRequest, LinkResult, LibraryStats, Show, Movie, DownloadItem, HistoryEntry, ParseResult, Settings, TorrentStatus, NyaaResult, RSSRule, RSSMatch } from '@/lib/types'
 
 class ApiError extends Error {
   status: number
@@ -79,5 +79,16 @@ export function useApi() {
     // Shoko
     shokoScan: () => request<{ ok: boolean }>('POST', '/shoko/scan'),
     testShoko: () => request<{ ok: boolean }>('GET', '/shoko/test'),
+
+    // RSS Rules
+    listRSSRules: () => request<RSSRule[]>('GET', '/rss/rules'),
+    getRSSRule: (id: number) => request<RSSRule>('GET', `/rss/rule?id=${id}`),
+    createRSSRule: (rule: Omit<RSSRule, 'id' | 'createdAt' | 'lastCheck' | 'matchCount'>) => request<RSSRule>('POST', '/rss/rules', rule),
+    updateRSSRule: (rule: RSSRule) => request<RSSRule>('PUT', '/rss/rules', rule),
+    deleteRSSRule: (id: number) => request<{ ok: boolean }>('DELETE', '/rss/rules', { id }),
+    toggleRSSRule: (id: number, enabled: boolean) => request<{ ok: boolean }>('POST', '/rss/rules/toggle', { id, enabled }),
+    listRSSMatches: (ruleId?: number, limit?: number) => request<RSSMatch[]>('GET', `/rss/matches?${ruleId ? `ruleId=${ruleId}&` : ''}${limit ? `limit=${limit}` : ''}`),
+    clearRSSMatches: (ruleId: number) => request<{ ok: boolean }>('DELETE', '/rss/matches', { ruleId }),
+    rssPollNow: () => request<{ ok: boolean }>('POST', '/rss/poll'),
   }
 }

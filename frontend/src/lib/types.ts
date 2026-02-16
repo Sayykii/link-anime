@@ -113,3 +113,28 @@ export interface LinkProgress {
   current: number
   total: number
 }
+
+export interface RSSRule {
+  id: number
+  name: string
+  query: string
+  showName: string
+  season: number
+  mediaType: 'series' | 'movie'
+  minSeeders: number
+  resolution: string
+  enabled: boolean
+  lastCheck?: string
+  createdAt: string
+  matchCount: number
+}
+
+export interface RSSMatch {
+  id: number
+  ruleId: number
+  title: string
+  hash: string
+  matched: string
+  status: 'downloaded' | 'linked' | 'failed' | 'pending'
+  ruleName: string
+}
