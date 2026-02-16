@@ -267,8 +267,53 @@ func writeHistory(req models.LinkRequest, result *models.LinkResult, sourcePath 
 	return nil
 }
 
+// getFileSafety checks the hardlink count of a file and returns safety info.
+func getFileSafety(path string) models.FileSafetyInfo {
+	info := models.FileSafetyInfo{Path: path}
+	var stat syscall.Stat_t
+	if err := syscall.Stat(path, &stat); err != nil {
+		// Can't stat — treat as unsafe
+		info.Nlink = 1
+		info.Safe = false
+		return info
+	}
+	info.Nlink = stat.Nlink
+	info.Safe = stat.Nlink > 1
+	return info
+}
+
+// UnlinkPreview checks what would happen if we unlinked the given directory.
+// Returns safety info for each file without removing anything.
+func UnlinkPreview(targetDir string) (*models.UnlinkPreview, error) {
+	preview := &models.UnlinkPreview{}
+
+	err := filepath.Walk(targetDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return nil
+		}
+		if info.IsDir() || !scanner.IsVideo(info.Name()) {
+			return nil
+		}
+
+		safety := getFileSafety(path)
+		if safety.Safe {
+			preview.SafeFiles = append(preview.SafeFiles, safety)
+		} else {
+			preview.UnsafeFiles = append(preview.UnsafeFiles, safety)
+		}
+		preview.TotalFiles++
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return preview, nil
+}
+
 // Unlink removes hardlinks from the library side.
-func Unlink(targetDir string) (*models.LinkResult, error) {
+// If force is false, files with nlink=1 (only copy) are skipped.
+func Unlink(targetDir string, force bool) (*models.LinkResult, error) {
 	result := &models.LinkResult{DestDir: targetDir}
 
 	err := filepath.Walk(targetDir, func(path string, info os.FileInfo, err error) error {
@@ -277,6 +322,15 @@ func Unlink(targetDir string) (*models.LinkResult, error) {
 		}
 		if info.IsDir() || !scanner.IsVideo(info.Name()) {
 			return nil
+		}
+
+		// Check hardlink safety
+		if !force {
+			safety := getFileSafety(path)
+			if !safety.Safe {
+				result.Skipped++
+				return nil
+			}
 		}
 
 		if err := os.Remove(path); err != nil {
@@ -296,25 +350,53 @@ func Unlink(targetDir string) (*models.LinkResult, error) {
 	return result, nil
 }
 
-// Undo reverses the last link operation.
-func Undo() (*models.LinkResult, *models.HistoryEntry, error) {
-	// Get the last history entry
-	var entry models.HistoryEntry
-	var seasonVal sql.NullInt64
-	err := database.DB.QueryRow(
-		`SELECT id, timestamp, media_type, show_name, season, file_count, total_size, dest_path, source
-		 FROM history ORDER BY id DESC LIMIT 1`,
-	).Scan(&entry.ID, &entry.Timestamp, &entry.MediaType, &entry.ShowName, &seasonVal,
-		&entry.FileCount, &entry.TotalSize, &entry.DestPath, &entry.Source)
-	if err == sql.ErrNoRows {
-		return nil, nil, fmt.Errorf("no history entries to undo")
-	}
+// UndoPreview checks what would happen if we undid the last link operation.
+// Returns safety info for each file without removing anything.
+func UndoPreview() (*models.UnlinkPreview, *models.HistoryEntry, error) {
+	entry, err := getLastHistoryEntry()
 	if err != nil {
-		return nil, nil, fmt.Errorf("query history: %w", err)
+		return nil, nil, err
 	}
-	if seasonVal.Valid {
-		s := int(seasonVal.Int64)
-		entry.Season = &s
+
+	rows, err := database.DB.Query(
+		`SELECT file_path FROM linked_files WHERE history_id = ?`, entry.ID,
+	)
+	if err != nil {
+		return nil, nil, fmt.Errorf("query linked files: %w", err)
+	}
+	defer rows.Close()
+
+	preview := &models.UnlinkPreview{}
+
+	for rows.Next() {
+		var filePath string
+		if err := rows.Scan(&filePath); err != nil {
+			continue
+		}
+
+		if _, err := os.Stat(filePath); os.IsNotExist(err) {
+			// File already gone — not counted
+			continue
+		}
+
+		safety := getFileSafety(filePath)
+		if safety.Safe {
+			preview.SafeFiles = append(preview.SafeFiles, safety)
+		} else {
+			preview.UnsafeFiles = append(preview.UnsafeFiles, safety)
+		}
+		preview.TotalFiles++
+	}
+
+	return preview, entry, nil
+}
+
+// Undo reverses the last link operation.
+// If force is false, files with nlink=1 (only copy) are skipped.
+func Undo(force bool) (*models.LinkResult, *models.HistoryEntry, error) {
+	entry, err := getLastHistoryEntry()
+	if err != nil {
+		return nil, nil, err
 	}
 
 	// Get linked files for this entry
@@ -340,6 +422,15 @@ func Undo() (*models.LinkResult, *models.HistoryEntry, error) {
 			continue
 		}
 
+		// Check hardlink safety
+		if !force {
+			safety := getFileSafety(filePath)
+			if !safety.Safe {
+				result.Skipped++
+				continue
+			}
+		}
+
 		if err := os.Remove(filePath); err != nil {
 			result.Failed++
 		} else {
@@ -362,7 +453,29 @@ func Undo() (*models.LinkResult, *models.HistoryEntry, error) {
 	database.DB.Exec("DELETE FROM linked_files WHERE history_id = ?", entry.ID)
 	database.DB.Exec("DELETE FROM history WHERE id = ?", entry.ID)
 
-	return result, &entry, nil
+	return result, entry, nil
+}
+
+// getLastHistoryEntry retrieves the most recent history entry from the database.
+func getLastHistoryEntry() (*models.HistoryEntry, error) {
+	var entry models.HistoryEntry
+	var seasonVal sql.NullInt64
+	err := database.DB.QueryRow(
+		`SELECT id, timestamp, media_type, show_name, season, file_count, total_size, dest_path, source
+		 FROM history ORDER BY id DESC LIMIT 1`,
+	).Scan(&entry.ID, &entry.Timestamp, &entry.MediaType, &entry.ShowName, &seasonVal,
+		&entry.FileCount, &entry.TotalSize, &entry.DestPath, &entry.Source)
+	if err == sql.ErrNoRows {
+		return nil, fmt.Errorf("no history entries to undo")
+	}
+	if err != nil {
+		return nil, fmt.Errorf("query history: %w", err)
+	}
+	if seasonVal.Valid {
+		s := int(seasonVal.Int64)
+		entry.Season = &s
+	}
+	return &entry, nil
 }
 
 // GetHistory returns recent history entries.

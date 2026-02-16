@@ -59,7 +59,9 @@ func NewRouter(s *Server, staticFS http.FileSystem) chi.Router {
 			// Link operations
 			r.Post("/link", s.handleLink)
 			r.Post("/link/preview", s.handleLinkPreview)
+			r.Get("/link/unlink/preview", s.handleUnlinkPreview)
 			r.Delete("/link/unlink", s.handleUnlink)
+			r.Get("/link/undo/preview", s.handleUndoPreview)
 			r.Post("/link/undo", s.handleUndo)
 
 			// History

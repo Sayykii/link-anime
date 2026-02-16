@@ -154,6 +154,26 @@ type RSSRule struct {
 	MatchCount int        `json:"matchCount"` // populated by queries, not stored
 }
 
+// FileSafetyInfo describes a file's hardlink safety status.
+type FileSafetyInfo struct {
+	Path  string `json:"path"`
+	Nlink uint64 `json:"nlink"` // hard link count
+	Safe  bool   `json:"safe"`  // true if nlink > 1 (original still exists)
+}
+
+// UnlinkPreview summarizes what would happen if an unlink/undo proceeded.
+type UnlinkPreview struct {
+	SafeFiles   []FileSafetyInfo `json:"safeFiles"`
+	UnsafeFiles []FileSafetyInfo `json:"unsafeFiles"`
+	TotalFiles  int              `json:"totalFiles"`
+}
+
+// TorrentProgress is broadcast over WebSocket for live download monitoring.
+type TorrentProgress struct {
+	Torrents  []TorrentStatus `json:"torrents"`
+	Completed []TorrentStatus `json:"completed,omitempty"` // newly completed this tick
+}
+
 // RSSMatch records a torrent matched by an RSS rule.
 type RSSMatch struct {
 	ID       int64     `json:"id"`

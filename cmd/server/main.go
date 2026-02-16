@@ -15,6 +15,7 @@ import (
 	"link-anime/internal/auth"
 	"link-anime/internal/config"
 	"link-anime/internal/database"
+	"link-anime/internal/monitor"
 	"link-anime/internal/notify"
 	"link-anime/internal/qbit"
 	"link-anime/internal/rss"
@@ -79,6 +80,23 @@ func main() {
 	poller.Start()
 	defer poller.Stop()
 	server.Poller = poller
+
+	// Create download monitor (polls qBit every 5s, broadcasts progress via WS)
+	dlMonitor := monitor.NewDownloadMonitor(
+		hub,
+		func() *qbit.Client { return server.Qbit },
+		func() *notify.Notifier { return server.Notifier },
+		func() string {
+			// Prefer DB setting over config
+			if v, err := database.GetSetting("qbit_category"); err == nil && v != "" {
+				return v
+			}
+			return cfg.QbitCategory
+		},
+		5*time.Second,
+	)
+	dlMonitor.Start()
+	defer dlMonitor.Stop()
 
 	// Embed frontend static files
 	var staticFS http.FileSystem

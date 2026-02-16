@@ -138,3 +138,20 @@ export interface RSSMatch {
   status: 'downloaded' | 'linked' | 'failed' | 'pending'
   ruleName: string
 }
+
+export interface FileSafetyInfo {
+  path: string
+  nlink: number
+  safe: boolean
+}
+
+export interface UnlinkPreview {
+  safeFiles: FileSafetyInfo[] | null
+  unsafeFiles: FileSafetyInfo[] | null
+  totalFiles: number
+}
+
+export interface TorrentProgress {
+  torrents: TorrentStatus[]
+  completed?: TorrentStatus[]
+}

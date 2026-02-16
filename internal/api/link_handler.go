@@ -82,9 +82,26 @@ func (s *Server) handleLinkPreview(w http.ResponseWriter, r *http.Request) {
 	jsonOK(w, result)
 }
 
+func (s *Server) handleUnlinkPreview(w http.ResponseWriter, r *http.Request) {
+	path := r.URL.Query().Get("path")
+	if path == "" {
+		jsonError(w, "path query parameter is required", http.StatusBadRequest)
+		return
+	}
+
+	preview, err := linker.UnlinkPreview(path)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	jsonOK(w, preview)
+}
+
 func (s *Server) handleUnlink(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		Path string `json:"path"`
+		Path  string `json:"path"`
+		Force bool   `json:"force"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		jsonError(w, "invalid request", http.StatusBadRequest)
@@ -96,7 +113,7 @@ func (s *Server) handleUnlink(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := linker.Unlink(req.Path)
+	result, err := linker.Unlink(req.Path, req.Force)
 	if err != nil {
 		jsonError(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -105,8 +122,27 @@ func (s *Server) handleUnlink(w http.ResponseWriter, r *http.Request) {
 	jsonOK(w, result)
 }
 
+func (s *Server) handleUndoPreview(w http.ResponseWriter, r *http.Request) {
+	preview, entry, err := linker.UndoPreview()
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	jsonOK(w, map[string]interface{}{
+		"preview": preview,
+		"entry":   entry,
+	})
+}
+
 func (s *Server) handleUndo(w http.ResponseWriter, r *http.Request) {
-	result, entry, err := linker.Undo()
+	var req struct {
+		Force bool `json:"force"`
+	}
+	// Body is optional — if empty or invalid, force defaults to false
+	json.NewDecoder(r.Body).Decode(&req)
+
+	result, entry, err := linker.Undo(req.Force)
 	if err != nil {
 		jsonError(w, err.Error(), http.StatusBadRequest)
 		return

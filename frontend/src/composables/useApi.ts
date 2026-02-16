@@ -1,4 +1,4 @@
-import type { LinkRequest, LinkResult, LibraryStats, Show, Movie, DownloadItem, HistoryEntry, ParseResult, Settings, TorrentStatus, NyaaResult, RSSRule, RSSMatch } from '@/lib/types'
+import type { LinkRequest, LinkResult, LibraryStats, Show, Movie, DownloadItem, HistoryEntry, ParseResult, Settings, TorrentStatus, NyaaResult, RSSRule, RSSMatch, UnlinkPreview } from '@/lib/types'
 
 class ApiError extends Error {
   status: number
@@ -56,8 +56,10 @@ export function useApi() {
     // Link operations
     link: (req: LinkRequest) => request<LinkResult>('POST', '/link', req),
     linkPreview: (req: LinkRequest) => request<LinkResult>('POST', '/link/preview', req),
-    unlink: (path: string) => request<LinkResult>('DELETE', '/link/unlink', { path }),
-    undo: () => request<{ result: LinkResult; entry: HistoryEntry }>('POST', '/link/undo'),
+    unlinkPreview: (path: string) => request<UnlinkPreview>('GET', `/link/unlink/preview?path=${encodeURIComponent(path)}`),
+    unlink: (path: string, force = false) => request<LinkResult>('DELETE', '/link/unlink', { path, force }),
+    undoPreview: () => request<{ preview: UnlinkPreview; entry: HistoryEntry }>('GET', '/link/undo/preview'),
+    undo: (force = false) => request<{ result: LinkResult; entry: HistoryEntry }>('POST', '/link/undo', { force }),
 
     // History
     getHistory: (limit = 50) => request<HistoryEntry[]>('GET', `/history?limit=${limit}`),
