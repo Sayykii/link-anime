@@ -5,6 +5,8 @@ set -euo pipefail
 
 SERVER="root@media"
 REPO_NAME="link-anime"
+REMOTE_REPO_DIR="/opt/stacks/${REPO_NAME}"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 # Colors
 RED='\033[0;31m'
@@ -25,53 +27,52 @@ fi
 
 # Step 1: Push to GitHub
 log "Pushing to GitHub..."
-git push origin main 2>&1 || {
-    warn "Nothing to push (already up to date)"
-}
+git push origin main 2>&1 || true
 
-# Step 2: Find the repo on the server, pull, and rebuild
-log "Connecting to ${SERVER}..."
-ssh "$SERVER" bash -s -- "$REPO_NAME" "$NO_CACHE" <<'REMOTE_SCRIPT'
+# Step 2: Ensure repo exists on server
+log "Ensuring repo exists on server..."
+ssh "$SERVER" bash -s -- "$REPO_NAME" "$REMOTE_REPO_DIR" <<'ENSURE_SCRIPT'
 set -euo pipefail
 REPO_NAME="$1"
+REPO_DIR="$2"
+
+if [[ -d "$REPO_DIR/.git" ]]; then
+    echo "[deploy] Repo already exists at ${REPO_DIR}"
+else
+    echo "[deploy] Cloning repo to ${REPO_DIR}..."
+    mkdir -p "$(dirname "$REPO_DIR")"
+    git clone "https://github.com/Sayykii/${REPO_NAME}.git" "$REPO_DIR"
+    echo "[deploy] Cloned successfully"
+fi
+ENSURE_SCRIPT
+
+# Step 3: Ensure .env exists on server (copy local one if missing)
+HAS_ENV=$(ssh "$SERVER" "[ -f '${REMOTE_REPO_DIR}/.env' ] && echo yes || echo no")
+if [[ "$HAS_ENV" == "no" ]]; then
+    if [[ -f "${SCRIPT_DIR}/.env" ]]; then
+        log "Copying .env to server..."
+        scp "${SCRIPT_DIR}/.env" "${SERVER}:${REMOTE_REPO_DIR}/.env"
+        log ".env copied. Edit it on the server if needed: ${REMOTE_REPO_DIR}/.env"
+    else
+        err "No .env found locally or on server! Create one at ${REMOTE_REPO_DIR}/.env"
+        exit 1
+    fi
+else
+    log ".env already exists on server"
+fi
+
+# Step 4: Pull latest code, rebuild, and restart
+log "Deploying..."
+ssh "$SERVER" bash -s -- "$REMOTE_REPO_DIR" "$NO_CACHE" <<'DEPLOY_SCRIPT'
+set -euo pipefail
+REPO_DIR="$1"
 NO_CACHE="${2:-}"
 
-# Find the repo directory
-REPO_DIR=""
-for dir in \
-    "/opt/dockhand/${REPO_NAME}" \
-    "/opt/stacks/${REPO_NAME}" \
-    "/root/${REPO_NAME}" \
-    "/srv/${REPO_NAME}" \
-    "/home/*/${REPO_NAME}"; do
-    # Expand globs
-    for expanded in $dir; do
-        if [[ -d "$expanded" && -f "$expanded/compose.yaml" ]]; then
-            REPO_DIR="$expanded"
-            break 2
-        fi
-    done
-done
-
-# If not found in common locations, search for it
-if [[ -z "$REPO_DIR" ]]; then
-    echo "[deploy] Searching for ${REPO_NAME} repo..."
-    REPO_DIR=$(find / -maxdepth 4 -name "compose.yaml" -path "*${REPO_NAME}*" -exec dirname {} \; 2>/dev/null | head -1)
-fi
-
-if [[ -z "$REPO_DIR" ]]; then
-    echo "[deploy] ERROR: Could not find ${REPO_NAME} directory on server" >&2
-    exit 1
-fi
-
-echo "[deploy] Found repo at: ${REPO_DIR}"
 cd "$REPO_DIR"
 
-# Pull latest code
 echo "[deploy] Pulling latest code..."
 git pull origin main
 
-# Rebuild and restart
 echo "[deploy] Rebuilding container..."
 if [[ -n "$NO_CACHE" ]]; then
     docker compose build --no-cache
@@ -80,14 +81,13 @@ else
     docker compose up -d --build --force-recreate
 fi
 
-# Show status
+echo ""
 echo "[deploy] Container status:"
 docker compose ps
 
-# Show last few log lines
 echo ""
 echo "[deploy] Recent logs:"
-docker compose logs --tail=10 --no-log-prefix
-REMOTE_SCRIPT
+docker compose logs --tail=15 --no-log-prefix
+DEPLOY_SCRIPT
 
 log "Deploy complete!"
