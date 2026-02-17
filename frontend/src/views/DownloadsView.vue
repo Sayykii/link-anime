@@ -30,6 +30,7 @@ import {
   HardDrive,
   Wifi,
   WifiOff,
+  Plus,
 } from 'lucide-vue-next'
 
 const api = useApi()
@@ -50,6 +51,10 @@ const wsActive = ref(false)
 const nyaaQuery = ref('')
 const nyaaResults = ref<NyaaResult[]>([])
 const searchingNyaa = ref(false)
+
+// Magnet link input
+const magnetLink = ref('')
+const addingMagnet = ref(false)
 
 onMounted(() => {
   loadDownloads()
@@ -130,6 +135,21 @@ async function addTorrent(magnet: string) {
     toast.success('Torrent added to qBittorrent')
   } catch (e: unknown) {
     toast.error(e instanceof Error ? e.message : 'Failed to add torrent')
+  }
+}
+
+async function addMagnet() {
+  const magnet = magnetLink.value.trim()
+  if (!magnet) return
+  addingMagnet.value = true
+  try {
+    await api.addQbitTorrent(magnet)
+    toast.success('Torrent added to qBittorrent')
+    magnetLink.value = ''
+  } catch (e: unknown) {
+    toast.error(e instanceof Error ? e.message : 'Failed to add torrent')
+  } finally {
+    addingMagnet.value = false
   }
 }
 
@@ -280,7 +300,15 @@ function torrentStateVariant(state: string): 'default' | 'secondary' | 'outline'
               Refresh
             </Button>
           </CardHeader>
-          <CardContent class="p-0">
+          <CardContent class="space-y-4">
+            <form @submit.prevent="addMagnet" class="flex gap-2">
+              <Input v-model="magnetLink" placeholder="Paste magnet link..." class="flex-1 font-mono text-xs" />
+              <Button type="submit" :disabled="addingMagnet || !magnetLink.trim()" variant="outline" class="gap-2 shrink-0">
+                <Loader2 v-if="addingMagnet" class="h-4 w-4 animate-spin" />
+                <Plus v-else class="h-4 w-4" />
+                Add
+              </Button>
+            </form>
             <div v-if="loadingTorrents && !torrents.length" class="flex items-center gap-2 text-muted-foreground py-8 justify-center">
               <Loader2 class="h-4 w-4 animate-spin" />
             </div>
