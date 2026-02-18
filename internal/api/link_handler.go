@@ -54,13 +54,16 @@ func (s *Server) handleLink(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Trigger Shoko scan if configured
+	log.Printf("[link] result: linked=%d skipped=%d failed=%d dryRun=%v shoko=%v shokoConfigured=%v",
+		result.Linked, result.Skipped, result.Failed, req.DryRun,
+		s.Shoko != nil, s.Shoko != nil && s.Shoko.IsConfigured())
 	if s.Shoko != nil && s.Shoko.IsConfigured() && result.Linked > 0 && !req.DryRun {
 		go func() {
-			log.Printf("Triggering Shoko scan for: %s", req.Name)
+			log.Printf("[shoko] Triggering scan for: %s", req.Name)
 			if err := s.Shoko.ScanAllImportFolders(); err != nil {
-				log.Printf("Shoko scan failed: %v", err)
+				log.Printf("[shoko] Scan failed: %v", err)
 			} else {
-				log.Printf("Shoko scan triggered successfully")
+				log.Printf("[shoko] Scan triggered successfully")
 			}
 		}()
 	}
