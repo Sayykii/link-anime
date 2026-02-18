@@ -136,18 +136,32 @@ func (c *Client) TestConnection() error {
 		return fmt.Errorf("shoko not configured")
 	}
 
+	// First check reachability
 	resp, err := c.doRequest("GET", "/api/v3/Init/Status", nil)
 	if err != nil {
 		return fmt.Errorf("shoko connection: %w", err)
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode == 401 || resp.StatusCode == 403 {
-		return fmt.Errorf("shoko auth failed: invalid API key")
-	}
-
 	if resp.StatusCode >= 400 {
 		return fmt.Errorf("shoko returned status %d", resp.StatusCode)
+	}
+
+	// Then verify auth works by hitting a protected endpoint
+	if c.apiKey != "" {
+		resp2, err := c.doRequest("GET", "/api/v3/ImportFolder", nil)
+		if err != nil {
+			return fmt.Errorf("shoko auth check: %w", err)
+		}
+		defer resp2.Body.Close()
+
+		if resp2.StatusCode == 401 || resp2.StatusCode == 403 {
+			return fmt.Errorf("shoko auth failed: API key is invalid or expired")
+		}
+		if resp2.StatusCode >= 400 {
+			body, _ := io.ReadAll(resp2.Body)
+			return fmt.Errorf("shoko auth check failed (status %d): %s", resp2.StatusCode, string(body))
+		}
 	}
 
 	return nil
