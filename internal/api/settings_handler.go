@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 
@@ -106,12 +107,16 @@ func (s *Server) reinitClients() {
 
 	if qbitURL != "" {
 		s.Qbit = newQbitClient(qbitURL, qbitUser, qbitPass)
+		log.Printf("[settings] qBit client re-initialized: %s", qbitURL)
 	}
 
 	shokoURL := settingOr("shoko_url", s.Config.ShokoURL)
 	shokoKey := settingOr("shoko_apikey", s.Config.ShokoAPIKey)
 	if shokoURL != "" {
 		s.Shoko = newShokoClient(shokoURL, shokoKey)
+		log.Printf("[settings] Shoko client re-initialized: url=%s apikey=%v", shokoURL, shokoKey != "")
+	} else {
+		log.Printf("[settings] Shoko not configured (no URL)")
 	}
 
 	notifyURL := settingOr("notify_url", s.Config.NotifyURL)
