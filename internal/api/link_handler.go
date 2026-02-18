@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 
 	"link-anime/internal/linker"
@@ -54,7 +55,14 @@ func (s *Server) handleLink(w http.ResponseWriter, r *http.Request) {
 
 	// Trigger Shoko scan if configured
 	if s.Shoko != nil && s.Shoko.IsConfigured() && result.Linked > 0 && !req.DryRun {
-		go s.Shoko.ScanAllImportFolders()
+		go func() {
+			log.Printf("Triggering Shoko scan for: %s", req.Name)
+			if err := s.Shoko.ScanAllImportFolders(); err != nil {
+				log.Printf("Shoko scan failed: %v", err)
+			} else {
+				log.Printf("Shoko scan triggered successfully")
+			}
+		}()
 	}
 
 	jsonOK(w, result)

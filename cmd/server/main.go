@@ -62,6 +62,7 @@ func main() {
 	var shokoClient *shoko.Client
 	if cfg.ShokoURL != "" {
 		shokoClient = shoko.New(cfg.ShokoURL, cfg.ShokoAPIKey)
+		log.Printf("  Shoko:        %s (apikey=%v)", cfg.ShokoURL, cfg.ShokoAPIKey != "")
 	}
 
 	notifier := notify.New(cfg.NotifyURL)
