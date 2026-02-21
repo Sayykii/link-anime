@@ -16,3 +16,5 @@ services:
       - TZ=${TZ:-Europe/Sofia}
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    devices:
+      - "/dev/dri:/dev/dri"

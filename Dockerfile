@@ -41,13 +41,18 @@ RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /link-anime ./cmd/serv
 # ============================================================
 FROM alpine:3.21
 
-RUN apk add --no-cache ca-certificates tzdata shadow su-exec
+RUN apk add --no-cache ca-certificates tzdata shadow su-exec \
+    # Upscale pipeline: FFmpeg with libplacebo + Vulkan GPU access
+    ffmpeg libplacebo vulkan-loader mesa-vulkan-intel x265-libs
 
 # Create app directory
 RUN mkdir -p /app/data
 
 # Copy binary
 COPY --from=backend-builder /link-anime /app/link-anime
+
+# Copy Anime4K shader pipelines for upscaling
+COPY shaders/ /app/shaders/
 
 # Copy entrypoint
 COPY entrypoint.sh /entrypoint.sh

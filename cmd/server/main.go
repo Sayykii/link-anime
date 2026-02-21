@@ -20,6 +20,7 @@ import (
 	"link-anime/internal/qbit"
 	"link-anime/internal/rss"
 	"link-anime/internal/scanner"
+	"link-anime/internal/upscale"
 	"link-anime/internal/ws"
 )
 
@@ -48,6 +49,17 @@ func main() {
 
 	// Initialize video extension matcher
 	scanner.InitVideoExtensions(cfg.VideoExtensions)
+
+	// Check upscale pipeline availability (ffmpeg + libplacebo + Vulkan)
+	if probe, err := upscale.Probe(); err != nil {
+		log.Printf("Upscale: ffmpeg not available — upscaling disabled (%v)", err)
+	} else {
+		log.Printf("Upscale: ffmpeg=%v libplacebo=%v vulkan=%q",
+			probe.FFmpegFound, probe.LibplaceboOK, probe.VulkanDevice)
+		if !probe.LibplaceboOK {
+			log.Printf("Upscale: WARNING — libplacebo filter not found in ffmpeg, upscaling will fail")
+		}
+	}
 
 	// Create WebSocket hub
 	hub := ws.NewHub()
