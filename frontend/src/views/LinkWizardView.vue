@@ -3,6 +3,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useApi } from '@/composables/useApi'
 import { useWebSocket } from '@/composables/useWebSocket'
 import { useLibraryStore } from '@/stores/library'
+import { useRoute, useRouter } from 'vue-router'
 import type { DownloadItem, LinkResult, LinkProgress, Show } from '@/lib/types'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -23,6 +24,8 @@ import { FolderOpen, FileVideo, Link, ArrowRight, Check, Loader2 } from 'lucide-
 
 const api = useApi()
 const library = useLibraryStore()
+const route = useRoute()
+const router = useRouter()
 const { connect, on, connected } = useWebSocket()
 
 // Wizard state
@@ -57,6 +60,17 @@ onMounted(async () => {
   connect()
   await loadDownloads()
   await library.fetchShows()
+
+  // Auto-select source from query param (from Downloads page "Link" button)
+  const sourceParam = route.query.source as string | undefined
+  if (sourceParam && downloads.value.length) {
+    const match = downloads.value.find(d => d.name === sourceParam)
+    if (match) {
+      selectSource(match)
+      // Clean the URL to prevent re-triggering on refresh
+      router.replace('/link')
+    }
+  }
 })
 
 // Listen for WebSocket progress

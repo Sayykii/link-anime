@@ -140,6 +140,57 @@ func TestParseReleaseName(t *testing.T) {
 			"Spy x Family",
 			nil,
 		},
+
+		// === Real-world test cases ===
+
+		// Dot-style movie with year, NF, DDP, H.264, release group after dash
+		{
+			"100.Meters.2025.1080p.NF.WEB-DL.MULTi.DDP5.1.H.264-VARYG.mkv",
+			"100 Meters (2025)",
+			nil,
+		},
+		// Bracketed group, subtitle in name, S-code with revision, BD AV1, dual audio
+		{
+			"[Breeze] Dr. STONE - New World - S03 v3 [1080p BD AV1][Dual Audio]",
+			"Dr. STONE - New World",
+			intPtr(3),
+		},
+		// Bracketed group, SxxExx pattern (name truncated before SxxExx)
+		{
+			"[KawaSubs] Journal with Witch - S01E01 [WEB 1080p AVC EAC3] [Eng-Sub].mkv",
+			"Journal with Witch",
+			intPtr(1),
+		},
+		// Bracketed group, S-code in title without dash separator, BD FLAC x265
+		{
+			"[KWTR] Takopis Original Sin S01 (BD 1080p FLAC x265)",
+			"Takopis Original Sin",
+			intPtr(1),
+		},
+		// Dot-style SxxExx with episode title — name truncated before SxxExx
+		{
+			"Frieren.Beyond.Journeys.End.S02E05.Logistics.in.the.Northern.Plateau.1080p.NF.WEB-DL.JPN.AAC2.0.H.264.MSubs-ToonsHub.mkv",
+			"Frieren Beyond Journeys End",
+			intPtr(2),
+		},
+		// Dot-style movie name with year and AMZN source
+		{
+			"One.Piece.Film.Red.2022.1080p.AMZN.WEB-DL.DDP5.1.H.264-VARYG.mkv",
+			"One Piece Film Red (2022)",
+			nil,
+		},
+		// Simple bracketed batch with episode range in parens
+		{
+			"[SubsPlease] Oshi no Ko (01-11) (1080p) [Batch]",
+			"Oshi no Ko",
+			nil,
+		},
+		// Dot-style with CR (Crunchyroll) tag
+		{
+			"Dandadan.S01.1080p.CR.WEB-DL.AAC.x265-Group.mkv",
+			"Dandadan",
+			intPtr(1),
+		},
 	}
 
 	for _, tt := range tests {
