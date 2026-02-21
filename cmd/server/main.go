@@ -20,7 +20,6 @@ import (
 	"link-anime/internal/qbit"
 	"link-anime/internal/rss"
 	"link-anime/internal/scanner"
-	"link-anime/internal/shoko"
 	"link-anime/internal/ws"
 )
 
@@ -53,28 +52,15 @@ func main() {
 	// Create WebSocket hub
 	hub := ws.NewHub()
 
-	// Create integration clients
-	var qbitClient *qbit.Client
-	if cfg.QbitURL != "" {
-		qbitClient = qbit.New(cfg.QbitURL, cfg.QbitUser, cfg.QbitPass)
-	}
-
-	var shokoClient *shoko.Client
-	if cfg.ShokoURL != "" {
-		shokoClient = shoko.New(cfg.ShokoURL, cfg.ShokoAPIKey)
-		log.Printf("  Shoko:        %s (apikey=%v)", cfg.ShokoURL, cfg.ShokoAPIKey != "")
-	}
-
-	notifier := notify.New(cfg.NotifyURL)
-
-	// Create API server
+	// Create API server (clients initialized as nil, ReinitClients populates them)
 	server := &api.Server{
-		Config:   cfg,
-		Hub:      hub,
-		Qbit:     qbitClient,
-		Shoko:    shokoClient,
-		Notifier: notifier,
+		Config: cfg,
+		Hub:    hub,
 	}
+
+	// Initialize integration clients from DB settings (first) or env vars (fallback).
+	// This ensures credentials saved via the Settings UI survive container restarts.
+	server.ReinitClients()
 
 	// Create RSS poller (getter func reads server.Qbit so reinitClients updates are reflected)
 	poller := rss.NewPoller(hub, func() *qbit.Client { return server.Qbit }, 15*time.Minute)

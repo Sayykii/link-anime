@@ -66,7 +66,7 @@ func (s *Server) handleUpdateSettings(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Reinitialize clients with new settings
-	s.reinitClients()
+	s.ReinitClients()
 
 	jsonOK(w, map[string]bool{"ok": true})
 }
@@ -99,8 +99,9 @@ func (s *Server) handleChangePassword(w http.ResponseWriter, r *http.Request) {
 	jsonOK(w, map[string]bool{"ok": true})
 }
 
-// reinitClients updates qbit, shoko, and notifier with current DB settings.
-func (s *Server) reinitClients() {
+// ReinitClients updates qbit, shoko, and notifier with current DB settings.
+// Exported so main.go can call it on startup to pick up DB-saved credentials.
+func (s *Server) ReinitClients() {
 	qbitURL := settingOr("qbit_url", s.Config.QbitURL)
 	qbitUser := settingOr("qbit_user", s.Config.QbitUser)
 	qbitPass := settingOr("qbit_pass", s.Config.QbitPass)
