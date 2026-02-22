@@ -184,3 +184,34 @@ type RSSMatch struct {
 	Status   string    `json:"status"`             // "downloaded", "linked", "failed"
 	RuleName string    `json:"ruleName,omitempty"` // populated by join queries
 }
+
+// UpscaleStatus constants for job state tracking.
+const (
+	UpscaleStatusPending   = "pending"
+	UpscaleStatusRunning   = "running"
+	UpscaleStatusCompleted = "completed"
+	UpscaleStatusFailed    = "failed"
+	UpscaleStatusCancelled = "cancelled"
+)
+
+// UpscaleJob represents an upscaling job in the queue.
+type UpscaleJob struct {
+	ID          int64      `json:"id"`
+	InputPath   string     `json:"inputPath"`
+	OutputPath  string     `json:"outputPath"`
+	Preset      string     `json:"preset"`
+	Status      string     `json:"status"`
+	Error       *string    `json:"error,omitempty"`
+	CreatedAt   time.Time  `json:"createdAt"`
+	StartedAt   *time.Time `json:"startedAt,omitempty"`
+	CompletedAt *time.Time `json:"completedAt,omitempty"`
+}
+
+// UpscaleProgress is broadcast over WebSocket during upscaling.
+type UpscaleProgress struct {
+	JobID   int64   `json:"jobId"`
+	Frame   int     `json:"frame"`
+	FPS     float64 `json:"fps"`
+	Time    string  `json:"time"`    // e.g., "00:05:23"
+	Percent float64 `json:"percent"` // 0-100
+}
