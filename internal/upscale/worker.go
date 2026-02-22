@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"link-anime/internal/database"
+	"link-anime/internal/models"
 	"link-anime/internal/ws"
 )
 
@@ -70,19 +71,86 @@ func (w *Worker) run() {
 func (w *Worker) processNext() {
 	job, err := database.GetNextPendingJob()
 	if err != nil {
-		log.Printf("[upscale] failed to get pending job: %v", err)
+		log.Printf("[upscale] error getting pending job: %v", err)
 		return
 	}
-
 	if job == nil {
 		return // No pending jobs
 	}
 
-	log.Printf("[upscale] found pending job %d: %s", job.ID, job.InputPath)
-	// Actual processing added in Plan 02
+	log.Printf("[upscale] processing job %d: %s", job.ID, job.InputPath)
+
+	// Track job for graceful shutdown
+	w.mu.Lock()
+	w.currentJob = job.ID
+	ctx, cancel := context.WithCancel(context.Background())
+	w.cancelFunc = cancel
+	w.mu.Unlock()
+
+	// Mark job as running
+	if err := database.UpdateJobStatus(job.ID, models.UpscaleStatusRunning, nil); err != nil {
+		log.Printf("[upscale] failed to update job %d to running: %v", job.ID, err)
+		return
+	}
+
+	// Run upscaling with progress callback
+	err = w.engine.Run(ctx, job, func(p models.UpscaleProgress) {
+		w.hub.Broadcast(models.WSMessage{
+			Type: "upscale_progress",
+			Data: p,
+		})
+	})
+
+	// Clear current job
+	w.mu.Lock()
+	w.currentJob = 0
+	w.cancelFunc = nil
+	w.mu.Unlock()
+
+	// Handle result
+	if err != nil {
+		if ctx.Err() != nil {
+			// Cancelled by shutdown - don't mark failed, handleShutdown resets
+			log.Printf("[upscale] job %d cancelled", job.ID)
+			return
+		}
+		errStr := err.Error()
+		database.UpdateJobStatus(job.ID, models.UpscaleStatusFailed, &errStr)
+		w.hub.Broadcast(models.WSMessage{
+			Type: "upscale_failed",
+			Data: map[string]interface{}{"jobId": job.ID, "error": errStr},
+		})
+		log.Printf("[upscale] job %d failed: %v", job.ID, err)
+		return
+	}
+
+	database.UpdateJobStatus(job.ID, models.UpscaleStatusCompleted, nil)
+	w.hub.Broadcast(models.WSMessage{
+		Type: "upscale_complete",
+		Data: map[string]interface{}{"jobId": job.ID, "outputPath": job.OutputPath},
+	})
+	log.Printf("[upscale] job %d completed: %s", job.ID, job.OutputPath)
 }
 
 func (w *Worker) handleShutdown() {
-	log.Printf("[upscale] worker shutting down")
-	// Graceful shutdown added in Plan 02
+	w.mu.Lock()
+	jobID := w.currentJob
+	cancel := w.cancelFunc
+	w.mu.Unlock()
+
+	if cancel != nil {
+		log.Printf("[upscale] cancelling running job %d", jobID)
+		cancel()
+	}
+
+	if jobID != 0 {
+		// Reset job to pending so it restarts on next run
+		if err := database.ResetRunningJob(jobID); err != nil {
+			log.Printf("[upscale] failed to reset job %d: %v", jobID, err)
+		} else {
+			log.Printf("[upscale] reset job %d to pending for restart", jobID)
+		}
+	}
+
+	log.Printf("[upscale] worker shutdown complete")
 }
