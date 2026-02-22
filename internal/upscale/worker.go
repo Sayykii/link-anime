@@ -132,6 +132,20 @@ func (w *Worker) processNext() {
 	log.Printf("[upscale] job %d completed: %s", job.ID, job.OutputPath)
 }
 
+// CancelJob cancels a job by ID if it's currently running.
+// Returns true if the job was cancelled, false if not running or different job.
+func (w *Worker) CancelJob(id int64) bool {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	if w.currentJob != id || w.cancelFunc == nil {
+		return false
+	}
+
+	w.cancelFunc()
+	return true
+}
+
 func (w *Worker) handleShutdown() {
 	w.mu.Lock()
 	jobID := w.currentJob
