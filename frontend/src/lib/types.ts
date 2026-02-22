@@ -155,3 +155,27 @@ export interface TorrentProgress {
   torrents: TorrentStatus[]
   completed?: TorrentStatus[]
 }
+
+// Upscale job types
+
+export type UpscaleStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled'
+
+export interface UpscaleJob {
+  id: number
+  inputPath: string
+  outputPath: string
+  preset: string
+  status: UpscaleStatus
+  error?: string
+  createdAt: string
+  startedAt?: string
+  completedAt?: string
+}
+
+export interface UpscaleProgress {
+  jobId: number
+  frame: number
+  fps: number
+  time: string
+  percent: number
+}
