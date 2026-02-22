@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-22)
 
 **Core value:** Users can upscale their anime downloads to 4K quality through a simple queue-based interface, with real-time progress feedback.
-**Current focus:** Phase 4 - API
+**Current focus:** Phase 5 - WebSocket
 
 ## Current Position
 
-Phase: 5 of 7 (Frontend)
-Plan: 0 of 2 in current phase
-Status: Ready to start Phase 5
-Last activity: 2026-02-22 — Completed 04-02-PLAN.md
+Phase: 5 of 7 (WebSocket)
+Plan: 1 of 1 in current phase (Phase 5 complete)
+Status: Phase 5 complete
+Last activity: 2026-02-22 — Completed 05-01-PLAN.md
 
-Progress: [████████░░] 80%
+Progress: [████████░░] 82%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 8
+- Total plans completed: 9
 - Average duration: 1 min
-- Total execution time: 0.13 hours
+- Total execution time: 0.15 hours
 
 **By Phase:**
 
@@ -31,6 +31,7 @@ Progress: [████████░░] 80%
 | 02-engine | 2 | 2 min | 1 min |
 | 03-worker | 2 | 4 min | 2 min |
 | 04-api | 2 | 2 min | 1 min |
+| 05-websocket | 1 | 1 min | 1 min |
 
 **Recent Trend:**
 - Last 5 plans: -
@@ -71,6 +72,8 @@ Recent decisions affecting current work:
 - Cancel returns 409 Conflict if job no longer running (race condition handling)
 - Probe returns ProbeResult struct with FFmpegFound, LibplaceboOK, VulkanDevice
 
+- Message contracts match Go worker.go broadcast payloads exactly (TypeScript types for WS)
+
 ### Pending Todos
 
 None yet.
@@ -82,5 +85,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-22
-Stopped at: Completed 04-02-PLAN.md (Phase 04 complete)
+Stopped at: Completed 05-01-PLAN.md (Phase 05 complete)
 Resume file: None

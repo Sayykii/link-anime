@@ -84,17 +84,17 @@ Plans:
 - [ ] 04-02-PLAN.md — Cancel endpoint with Worker.CancelJob and probe endpoint
 
 ### Phase 5: WebSocket
-**Goal**: Real-time progress broadcasts via existing hub
+**Goal**: Verify and document WebSocket message contracts for frontend
 **Depends on**: Phase 3 (worker emits progress events)
 **Requirements**: WS-01, WS-02, WS-03
 **Success Criteria** (what must be TRUE):
   1. upscale_progress messages broadcast at ~1s interval during encode
   2. upscale_complete message broadcasts on successful completion
   3. upscale_failed message broadcasts on error (with error message)
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 05-01: WebSocket message types and broadcasts
+- [ ] 05-01-PLAN.md — Verify WebSocket broadcasts and add TypeScript message contracts
 
 ### Phase 6: Frontend Integration
 **Goal**: Frontend can communicate with upscale API and receive real-time updates
@@ -137,7 +137,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 1. Foundation | 2/2 | Complete   | 2026-02-22 |
 | 2. Engine | 2/2 | Complete   | 2026-02-22 |
 | 3. Worker | 2/2 | Complete   | 2026-02-22 |
-| 4. API | 1/2 | In Progress | - |
+| 4. API | 2/2 | Complete | 2026-02-22 |
 | 5. WebSocket | 0/1 | Not started | - |
 | 6. Frontend Integration | 0/1 | Not started | - |
 | 7. Frontend UI | 0/3 | Not started | - |
