@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-22)
 
 **Core value:** Users can upscale their anime downloads to 4K quality through a simple queue-based interface, with real-time progress feedback.
-**Current focus:** Phase 2 - Engine
+**Current focus:** Phase 3 - Worker
 
 ## Current Position
 
-Phase: 2 of 7 (Engine)
-Plan: 2 of 2 in current phase (complete)
-Status: Phase complete
-Last activity: 2026-02-22 — Completed 02-02-PLAN.md
+Phase: 3 of 7 (Worker)
+Plan: 1 of 2 in current phase
+Status: In progress
+Last activity: 2026-02-22 — Completed 03-01-PLAN.md
 
-Progress: [█████░░░░░] 50%
+Progress: [█████░░░░░] 55%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 4
+- Total plans completed: 5
 - Average duration: 1 min
-- Total execution time: 0.07 hours
+- Total execution time: 0.08 hours
 
 **By Phase:**
 
@@ -29,6 +29,7 @@ Progress: [█████░░░░░] 50%
 |-------|-------|-------|----------|
 | 01-foundation | 2 | 2 min | 1 min |
 | 02-engine | 2 | 2 min | 1 min |
+| 03-worker | 1 | 1 min | 1 min |
 
 **Recent Trend:**
 - Last 5 plans: -
@@ -54,6 +55,10 @@ Recent decisions affecting current work:
 - Throttle progress updates to ~1/second (avoid WebSocket flooding)
 - Handle both \r and \n line endings (FFmpeg uses \r for in-place updates)
 
+- Follow DownloadMonitor pattern for Worker lifecycle consistency
+- 3-second poll interval for responsive job pickup
+- FIFO job ordering (oldest pending first)
+
 ### Pending Todos
 
 None yet.
@@ -65,5 +70,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-22
-Stopped at: Completed 02-02-PLAN.md (Phase 2 complete)
+Stopped at: Completed 03-01-PLAN.md
 Resume file: None

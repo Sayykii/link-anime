@@ -97,6 +97,11 @@ func main() {
 	dlMonitor.Start()
 	defer dlMonitor.Stop()
 
+	// Create upscale worker (polls DB for pending jobs)
+	upscaleWorker := upscale.NewWorker(hub, upscale.ShaderDir)
+	upscaleWorker.Start()
+	defer upscaleWorker.Stop()
+
 	// Embed frontend static files
 	var staticFS http.FileSystem
 	dist, err := fs.Sub(frontendFS, "dist")

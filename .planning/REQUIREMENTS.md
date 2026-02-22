@@ -23,8 +23,8 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Queue Worker
 
-- [ ] **WRK-01**: Single-job queue worker with Start/Stop lifecycle
-- [ ] **WRK-02**: Poll DB every 3s for pending jobs (oldest first)
+- [x] **WRK-01**: Single-job queue worker with Start/Stop lifecycle
+- [x] **WRK-02**: Poll DB every 3s for pending jobs (oldest first)
 - [ ] **WRK-03**: Status transitions (pending→running→completed/failed)
 - [ ] **WRK-04**: Graceful shutdown (reset running job to pending)
 
@@ -98,8 +98,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ENG-02 | Phase 2 | Complete |
 | ENG-03 | Phase 2 | Complete |
 | ENG-04 | Phase 2 | Complete |
-| WRK-01 | Phase 3 | Pending |
-| WRK-02 | Phase 3 | Pending |
+| WRK-01 | Phase 3 | Complete |
+| WRK-02 | Phase 3 | Complete |
 | WRK-03 | Phase 3 | Pending |
 | WRK-04 | Phase 3 | Pending |
 | API-01 | Phase 4 | Pending |

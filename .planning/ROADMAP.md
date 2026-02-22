@@ -61,11 +61,11 @@ Plans:
   2. Pending jobs are picked up within 3 seconds (oldest first)
   3. Job status transitions correctly (pending→running→completed/failed)
   4. Graceful shutdown resets running job to pending for restart
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 03-01: Queue worker with Start/Stop lifecycle
-- [ ] 03-02: Job polling and status transitions
+- [ ] 03-01-PLAN.md — Queue worker with Start/Stop lifecycle and DB polling
+- [ ] 03-02-PLAN.md — Job processing with status transitions and main.go integration
 
 ### Phase 4: API
 **Goal**: REST endpoints expose job management to frontend
