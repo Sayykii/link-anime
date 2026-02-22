@@ -10,25 +10,25 @@ See: .planning/PROJECT.md (updated 2026-02-22)
 ## Current Position
 
 Phase: 2 of 7 (Engine)
-Plan: 1 of 2 in current phase
-Status: In progress
-Last activity: 2026-02-22 — Completed 02-01-PLAN.md
+Plan: 2 of 2 in current phase (complete)
+Status: Phase complete
+Last activity: 2026-02-22 — Completed 02-02-PLAN.md
 
-Progress: [████░░░░░░] 40%
+Progress: [█████░░░░░] 50%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 3
+- Total plans completed: 4
 - Average duration: 1 min
-- Total execution time: 0.05 hours
+- Total execution time: 0.07 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-foundation | 2 | 2 min | 1 min |
-| 02-engine | 1 | 1 min | 1 min |
+| 02-engine | 2 | 2 min | 1 min |
 
 **Recent Trend:**
 - Last 5 plans: -
@@ -51,6 +51,9 @@ Recent decisions affecting current work:
 - Always output MKV format regardless of input
 - Defer stderr parsing to Plan 02
 
+- Throttle progress updates to ~1/second (avoid WebSocket flooding)
+- Handle both \r and \n line endings (FFmpeg uses \r for in-place updates)
+
 ### Pending Todos
 
 None yet.
@@ -62,5 +65,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-22
-Stopped at: Completed 02-01-PLAN.md
+Stopped at: Completed 02-02-PLAN.md (Phase 2 complete)
 Resume file: None

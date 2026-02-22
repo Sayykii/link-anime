@@ -17,7 +17,7 @@ Requirements for initial release. Each maps to roadmap phases.
 ### Upscale Engine
 
 - [x] **ENG-01**: FFmpeg runner with libplacebo 2x upscaling via Vulkan
-- [ ] **ENG-02**: Progress parsing from FFmpeg stderr (frame, fps, time)
+- [x] **ENG-02**: Progress parsing from FFmpeg stderr (frame, fps, time)
 - [x] **ENG-03**: Duration detection via ffprobe for percentage calculation
 - [x] **ENG-04**: Context cancellation support to kill FFmpeg process
 
@@ -95,7 +95,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DB-03 | Phase 1 | Complete |
 | DB-04 | Phase 1 | Complete |
 | ENG-01 | Phase 2 | Complete |
-| ENG-02 | Phase 2 | Pending |
+| ENG-02 | Phase 2 | Complete |
 | ENG-03 | Phase 2 | Complete |
 | ENG-04 | Phase 2 | Complete |
 | WRK-01 | Phase 3 | Pending |
