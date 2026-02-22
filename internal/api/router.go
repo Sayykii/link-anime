@@ -96,6 +96,12 @@ func NewRouter(s *Server, staticFS http.FileSystem) chi.Router {
 			r.Delete("/rss/matches", s.handleClearRSSMatches)
 			r.Post("/rss/poll", s.handleRSSPollNow)
 
+			// Upscale
+			r.Get("/upscale/jobs", s.handleListUpscaleJobs)
+			r.Post("/upscale/jobs", s.handleCreateUpscaleJob)
+			r.Get("/upscale/jobs/{id}", s.handleGetUpscaleJob)
+			r.Delete("/upscale/jobs/{id}", s.handleDeleteUpscaleJob)
+
 			// WebSocket
 			r.Get("/ws", s.handleWS)
 		})
