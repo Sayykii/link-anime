@@ -30,10 +30,10 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### API Endpoints
 
-- [ ] **API-01**: GET /api/upscale/jobs — list all jobs
-- [ ] **API-02**: POST /api/upscale/jobs — queue new job with validation
-- [ ] **API-03**: GET /api/upscale/jobs/{id} — get single job
-- [ ] **API-04**: DELETE /api/upscale/jobs/{id} — cancel/delete job
+- [x] **API-01**: GET /api/upscale/jobs — list all jobs
+- [x] **API-02**: POST /api/upscale/jobs — queue new job with validation
+- [x] **API-03**: GET /api/upscale/jobs/{id} — get single job
+- [x] **API-04**: DELETE /api/upscale/jobs/{id} — cancel/delete job
 - [ ] **API-05**: POST /api/upscale/jobs/{id}/cancel — cancel running job
 - [ ] **API-06**: GET /api/upscale/probe — check pipeline availability
 
@@ -102,10 +102,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | WRK-02 | Phase 3 | Complete |
 | WRK-03 | Phase 3 | Complete |
 | WRK-04 | Phase 3 | Complete |
-| API-01 | Phase 4 | Pending |
-| API-02 | Phase 4 | Pending |
-| API-03 | Phase 4 | Pending |
-| API-04 | Phase 4 | Pending |
+| API-01 | Phase 4 | Complete |
+| API-02 | Phase 4 | Complete |
+| API-03 | Phase 4 | Complete |
+| API-04 | Phase 4 | Complete |
 | API-05 | Phase 4 | Pending |
 | API-06 | Phase 4 | Pending |
 | WS-01 | Phase 5 | Pending |

@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-22)
 
 **Core value:** Users can upscale their anime downloads to 4K quality through a simple queue-based interface, with real-time progress feedback.
-**Current focus:** Phase 3 - Worker
+**Current focus:** Phase 4 - API
 
 ## Current Position
 
-Phase: 3 of 7 (Worker)
-Plan: 2 of 2 in current phase (complete)
-Status: Phase complete
-Last activity: 2026-02-22 — Completed 03-02-PLAN.md
+Phase: 4 of 7 (API)
+Plan: 1 of 2 in current phase
+Status: In Progress
+Last activity: 2026-02-22 — Completed 04-01-PLAN.md
 
-Progress: [██████░░░░] 60%
+Progress: [███████░░░] 70%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 6
+- Total plans completed: 7
 - Average duration: 1 min
-- Total execution time: 0.1 hours
+- Total execution time: 0.12 hours
 
 **By Phase:**
 
@@ -30,6 +30,7 @@ Progress: [██████░░░░] 60%
 | 01-foundation | 2 | 2 min | 1 min |
 | 02-engine | 2 | 2 min | 1 min |
 | 03-worker | 2 | 4 min | 2 min |
+| 04-api | 1 | 1 min | 1 min |
 
 **Recent Trend:**
 - Last 5 plans: -
@@ -63,6 +64,10 @@ Recent decisions affecting current work:
 - Reset running jobs to pending on shutdown for automatic restart
 - Broadcast distinct WebSocket events for progress/complete/failed
 
+- Output path auto-generated as inputPath with _4k.mkv suffix
+- Running jobs cannot be deleted (400 error)
+- Empty job list returns empty array, not null
+
 ### Pending Todos
 
 None yet.
@@ -74,5 +79,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-22
-Stopped at: Completed 03-02-PLAN.md (Phase 3 complete)
+Stopped at: Completed 04-01-PLAN.md
 Resume file: None

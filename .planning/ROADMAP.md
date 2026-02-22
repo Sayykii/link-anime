@@ -77,11 +77,11 @@ Plans:
   3. DELETE /api/upscale/jobs/{id} removes pending/completed/failed jobs
   4. POST /api/upscale/jobs/{id}/cancel stops running job
   5. GET /api/upscale/probe returns pipeline availability (Vulkan, FFmpeg, shaders)
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 04-01: Job CRUD handlers
-- [ ] 04-02: Cancel and probe endpoints
+- [ ] 04-01-PLAN.md — Database CRUD functions and job list/create/get/delete handlers
+- [ ] 04-02-PLAN.md — Cancel endpoint with Worker.CancelJob and probe endpoint
 
 ### Phase 5: WebSocket
 **Goal**: Real-time progress broadcasts via existing hub
@@ -137,7 +137,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 1. Foundation | 2/2 | Complete   | 2026-02-22 |
 | 2. Engine | 2/2 | Complete   | 2026-02-22 |
 | 3. Worker | 2/2 | Complete   | 2026-02-22 |
-| 4. API | 0/2 | Not started | - |
+| 4. API | 1/2 | In Progress | - |
 | 5. WebSocket | 0/1 | Not started | - |
 | 6. Frontend Integration | 0/1 | Not started | - |
 | 7. Frontend UI | 0/3 | Not started | - |
