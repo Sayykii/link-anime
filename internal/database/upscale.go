@@ -105,3 +105,128 @@ func ResetRunningJob(id int64) error {
 	_ = rows
 	return nil
 }
+
+// ListJobs returns all upscale jobs sorted by created_at DESC (newest first).
+func ListJobs() ([]models.UpscaleJob, error) {
+	rows, err := DB.Query(`
+		SELECT id, input_path, output_path, preset, status, error, created_at, started_at, completed_at
+		FROM upscale_jobs
+		ORDER BY created_at DESC
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("list jobs: %w", err)
+	}
+	defer rows.Close()
+
+	var jobs []models.UpscaleJob
+	for rows.Next() {
+		var job models.UpscaleJob
+		var errMsg sql.NullString
+		var startedAt, completedAt sql.NullTime
+
+		err := rows.Scan(
+			&job.ID,
+			&job.InputPath,
+			&job.OutputPath,
+			&job.Preset,
+			&job.Status,
+			&errMsg,
+			&job.CreatedAt,
+			&startedAt,
+			&completedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("scan job: %w", err)
+		}
+
+		if errMsg.Valid {
+			job.Error = &errMsg.String
+		}
+		if startedAt.Valid {
+			job.StartedAt = &startedAt.Time
+		}
+		if completedAt.Valid {
+			job.CompletedAt = &completedAt.Time
+		}
+
+		jobs = append(jobs, job)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate jobs: %w", err)
+	}
+
+	return jobs, nil
+}
+
+// GetJob returns a single upscale job by ID, or nil if not found.
+func GetJob(id int64) (*models.UpscaleJob, error) {
+	row := DB.QueryRow(`
+		SELECT id, input_path, output_path, preset, status, error, created_at, started_at, completed_at
+		FROM upscale_jobs
+		WHERE id = ?
+	`, id)
+
+	var job models.UpscaleJob
+	var errMsg sql.NullString
+	var startedAt, completedAt sql.NullTime
+
+	err := row.Scan(
+		&job.ID,
+		&job.InputPath,
+		&job.OutputPath,
+		&job.Preset,
+		&job.Status,
+		&errMsg,
+		&job.CreatedAt,
+		&startedAt,
+		&completedAt,
+	)
+
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("get job: %w", err)
+	}
+
+	if errMsg.Valid {
+		job.Error = &errMsg.String
+	}
+	if startedAt.Valid {
+		job.StartedAt = &startedAt.Time
+	}
+	if completedAt.Valid {
+		job.CompletedAt = &completedAt.Time
+	}
+
+	return &job, nil
+}
+
+// CreateJob inserts a new pending upscale job and returns the created job.
+func CreateJob(inputPath, outputPath, preset string) (*models.UpscaleJob, error) {
+	result, err := DB.Exec(`
+		INSERT INTO upscale_jobs (input_path, output_path, preset, status, created_at)
+		VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+	`, inputPath, outputPath, preset, models.UpscaleStatusPending)
+
+	if err != nil {
+		return nil, fmt.Errorf("create job: %w", err)
+	}
+
+	id, err := result.LastInsertId()
+	if err != nil {
+		return nil, fmt.Errorf("last insert id: %w", err)
+	}
+
+	return GetJob(id)
+}
+
+// DeleteJob removes an upscale job by ID.
+func DeleteJob(id int64) error {
+	_, err := DB.Exec(`DELETE FROM upscale_jobs WHERE id = ?`, id)
+	if err != nil {
+		return fmt.Errorf("delete job: %w", err)
+	}
+	return nil
+}
