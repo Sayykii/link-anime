@@ -34,8 +34,8 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **API-02**: POST /api/upscale/jobs — queue new job with validation
 - [x] **API-03**: GET /api/upscale/jobs/{id} — get single job
 - [x] **API-04**: DELETE /api/upscale/jobs/{id} — cancel/delete job
-- [ ] **API-05**: POST /api/upscale/jobs/{id}/cancel — cancel running job
-- [ ] **API-06**: GET /api/upscale/probe — check pipeline availability
+- [x] **API-05**: POST /api/upscale/jobs/{id}/cancel — cancel running job
+- [x] **API-06**: GET /api/upscale/probe — check pipeline availability
 
 ### WebSocket Messages
 
@@ -106,8 +106,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | API-02 | Phase 4 | Complete |
 | API-03 | Phase 4 | Complete |
 | API-04 | Phase 4 | Complete |
-| API-05 | Phase 4 | Pending |
-| API-06 | Phase 4 | Pending |
+| API-05 | Phase 4 | Complete |
+| API-06 | Phase 4 | Complete |
 | WS-01 | Phase 5 | Pending |
 | WS-02 | Phase 5 | Pending |
 | WS-03 | Phase 5 | Pending |
