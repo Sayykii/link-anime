@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"link-anime/internal/models"
 )
@@ -98,4 +99,14 @@ func (e *Engine) Run(ctx context.Context, job *models.UpscaleJob, cb ProgressCal
 	}
 
 	return nil
+}
+
+// GenerateOutputPath creates the output path for an upscaled video.
+// It takes an input path and returns a path with "_4k.mkv" suffix.
+// Example: "/downloads/anime/episode.mkv" -> "/downloads/anime/episode_4k.mkv"
+// Example: "/downloads/movie.mp4" -> "/downloads/movie_4k.mkv"
+func GenerateOutputPath(inputPath string) string {
+	ext := filepath.Ext(inputPath)
+	base := strings.TrimSuffix(inputPath, ext)
+	return base + "_4k.mkv"
 }
