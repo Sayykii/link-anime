@@ -10,6 +10,7 @@ import (
 	"link-anime/internal/qbit"
 	"link-anime/internal/rss"
 	"link-anime/internal/shoko"
+	"link-anime/internal/upscale"
 	"link-anime/internal/ws"
 
 	"github.com/go-chi/chi/v5"
@@ -24,6 +25,7 @@ type Server struct {
 	Shoko    *shoko.Client
 	Notifier *notify.Notifier
 	Poller   *rss.Poller
+	Worker   *upscale.Worker
 }
 
 // NewRouter creates the chi router with all routes and middleware.
@@ -101,6 +103,8 @@ func NewRouter(s *Server, staticFS http.FileSystem) chi.Router {
 			r.Post("/upscale/jobs", s.handleCreateUpscaleJob)
 			r.Get("/upscale/jobs/{id}", s.handleGetUpscaleJob)
 			r.Delete("/upscale/jobs/{id}", s.handleDeleteUpscaleJob)
+			r.Post("/upscale/jobs/{id}/cancel", s.handleCancelUpscaleJob)
+			r.Get("/upscale/probe", s.handleUpscaleProbe)
 
 			// WebSocket
 			r.Get("/ws", s.handleWS)

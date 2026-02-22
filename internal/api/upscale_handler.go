@@ -10,6 +10,7 @@ import (
 
 	"link-anime/internal/database"
 	"link-anime/internal/models"
+	"link-anime/internal/upscale"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -123,4 +124,55 @@ func (s *Server) handleDeleteUpscaleJob(w http.ResponseWriter, r *http.Request) 
 	}
 
 	jsonOK(w, map[string]bool{"deleted": true})
+}
+
+// handleCancelUpscaleJob cancels a running upscale job.
+func (s *Server) handleCancelUpscaleJob(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		jsonError(w, "invalid job ID", http.StatusBadRequest)
+		return
+	}
+
+	// Verify job exists
+	job, err := database.GetJob(id)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if job == nil {
+		jsonError(w, "job not found", http.StatusNotFound)
+		return
+	}
+
+	// Check job is running
+	if job.Status != models.UpscaleStatusRunning {
+		jsonError(w, "job is not running", http.StatusBadRequest)
+		return
+	}
+
+	// Try to cancel via worker
+	if !s.Worker.CancelJob(id) {
+		jsonError(w, "job no longer running", http.StatusConflict)
+		return
+	}
+
+	// Update status to cancelled
+	if err := database.UpdateJobStatus(id, models.UpscaleStatusCancelled, nil); err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	jsonOK(w, map[string]bool{"cancelled": true})
+}
+
+// handleUpscaleProbe returns pipeline availability status.
+func (s *Server) handleUpscaleProbe(w http.ResponseWriter, r *http.Request) {
+	result, err := upscale.Probe()
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	jsonOK(w, result)
 }
