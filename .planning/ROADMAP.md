@@ -14,7 +14,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Foundation** - Database schema, Go models, TypeScript interfaces (completed 2026-02-22)
 - [x] **Phase 2: Engine** - FFmpeg runner with libplacebo upscaling and progress parsing (completed 2026-02-22)
-- [ ] **Phase 3: Worker** - Single-job queue worker with Start/Stop lifecycle
+- [x] **Phase 3: Worker** - Single-job queue worker with Start/Stop lifecycle (completed 2026-02-22)
 - [ ] **Phase 4: API** - REST endpoints for job CRUD and pipeline probe
 - [ ] **Phase 5: WebSocket** - Real-time progress/status broadcasts
 - [ ] **Phase 6: Frontend Integration** - API client methods and WebSocket listeners
@@ -136,7 +136,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 |-------|----------------|--------|-----------|
 | 1. Foundation | 2/2 | Complete   | 2026-02-22 |
 | 2. Engine | 2/2 | Complete   | 2026-02-22 |
-| 3. Worker | 0/2 | Not started | - |
+| 3. Worker | 2/2 | Complete   | 2026-02-22 |
 | 4. API | 0/2 | Not started | - |
 | 5. WebSocket | 0/1 | Not started | - |
 | 6. Frontend Integration | 0/1 | Not started | - |

@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-02-22)
 ## Current Position
 
 Phase: 3 of 7 (Worker)
-Plan: 1 of 2 in current phase
-Status: In progress
-Last activity: 2026-02-22 — Completed 03-01-PLAN.md
+Plan: 2 of 2 in current phase (complete)
+Status: Phase complete
+Last activity: 2026-02-22 — Completed 03-02-PLAN.md
 
-Progress: [█████░░░░░] 55%
+Progress: [██████░░░░] 60%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 5
+- Total plans completed: 6
 - Average duration: 1 min
-- Total execution time: 0.08 hours
+- Total execution time: 0.1 hours
 
 **By Phase:**
 
@@ -29,7 +29,7 @@ Progress: [█████░░░░░] 55%
 |-------|-------|-------|----------|
 | 01-foundation | 2 | 2 min | 1 min |
 | 02-engine | 2 | 2 min | 1 min |
-| 03-worker | 1 | 1 min | 1 min |
+| 03-worker | 2 | 4 min | 2 min |
 
 **Recent Trend:**
 - Last 5 plans: -
@@ -59,6 +59,10 @@ Recent decisions affecting current work:
 - 3-second poll interval for responsive job pickup
 - FIFO job ordering (oldest pending first)
 
+- Context cancellation for clean job interruption
+- Reset running jobs to pending on shutdown for automatic restart
+- Broadcast distinct WebSocket events for progress/complete/failed
+
 ### Pending Todos
 
 None yet.
@@ -70,5 +74,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-22
-Stopped at: Completed 03-01-PLAN.md
+Stopped at: Completed 03-02-PLAN.md (Phase 3 complete)
 Resume file: None
