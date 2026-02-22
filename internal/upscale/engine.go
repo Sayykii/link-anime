@@ -3,7 +3,6 @@ package upscale
 import (
 	"context"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -59,8 +58,8 @@ func (e *Engine) buildCommand(ctx context.Context, job *models.UpscaleJob) *exec
 // Run executes an upscaling job with progress reporting.
 // It blocks until the job completes or the context is cancelled.
 func (e *Engine) Run(ctx context.Context, job *models.UpscaleJob, cb ProgressCallback) error {
-	// Get duration for percentage calculation (used in Plan 02 for progress)
-	_, err := ProbeDuration(ctx, job.InputPath)
+	// Get duration for percentage calculation
+	duration, err := ProbeDuration(ctx, job.InputPath)
 	if err != nil {
 		return fmt.Errorf("probe duration: %w", err)
 	}
@@ -76,16 +75,16 @@ func (e *Engine) Run(ctx context.Context, job *models.UpscaleJob, cb ProgressCal
 		return fmt.Errorf("start ffmpeg: %w", err)
 	}
 
-	// Drain stderr in background (actual parsing in Plan 02)
+	// Parse progress from stderr in background
 	done := make(chan struct{})
 	go func() {
-		io.Copy(io.Discard, stderr)
+		parseProgress(stderr, duration, job.ID, cb)
 		close(done)
 	}()
 
 	// Wait for completion
 	err = cmd.Wait()
-	<-done // Ensure stderr draining completes
+	<-done // Ensure progress parsing completes
 
 	if err != nil {
 		// Clean up partial output on error or cancel
