@@ -179,3 +179,28 @@ export interface UpscaleProgress {
   time: string
   percent: number
 }
+
+// WebSocket message types for upscale events
+export interface UpscaleProgressMessage {
+  type: 'upscale_progress'
+  data: UpscaleProgress
+}
+
+export interface UpscaleCompleteMessage {
+  type: 'upscale_complete'
+  data: {
+    jobId: number
+    outputPath: string
+  }
+}
+
+export interface UpscaleFailedMessage {
+  type: 'upscale_failed'
+  data: {
+    jobId: number
+    error: string
+  }
+}
+
+// Union type for all upscale WebSocket messages
+export type UpscaleWSMessage = UpscaleProgressMessage | UpscaleCompleteMessage | UpscaleFailedMessage
