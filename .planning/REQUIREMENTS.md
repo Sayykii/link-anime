@@ -39,9 +39,9 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### WebSocket Messages
 
-- [ ] **WS-01**: upscale_progress broadcasts during encode (~1s interval)
-- [ ] **WS-02**: upscale_complete broadcast on success
-- [ ] **WS-03**: upscale_failed broadcast on error
+- [x] **WS-01**: upscale_progress broadcasts during encode (~1s interval)
+- [x] **WS-02**: upscale_complete broadcast on success
+- [x] **WS-03**: upscale_failed broadcast on error
 
 ### Frontend - Downloads View
 
@@ -108,9 +108,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | API-04 | Phase 4 | Complete |
 | API-05 | Phase 4 | Complete |
 | API-06 | Phase 4 | Complete |
-| WS-01 | Phase 5 | Pending |
-| WS-02 | Phase 5 | Pending |
-| WS-03 | Phase 5 | Pending |
+| WS-01 | Phase 5 | Complete |
+| WS-02 | Phase 5 | Complete |
+| WS-03 | Phase 5 | Complete |
 | UI-01 | Phase 7 | Pending |
 | UI-02 | Phase 7 | Pending |
 | UI-03 | Phase 7 | Pending |
