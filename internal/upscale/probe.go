@@ -48,9 +48,12 @@ func Probe() (*ProbeResult, error) {
 	if err == nil {
 		result.VulkanDevice = "available"
 	} else {
-		// Parse output for device info even on failure
-		lines := string(vulkanOut)
-		if idx := strings.Index(lines, "vulkan"); idx >= 0 {
+		// Check if output contains success indicators despite non-zero exit
+		output := string(vulkanOut)
+		if strings.Contains(output, "frame=") && strings.Contains(output, "Lsize=") {
+			// FFmpeg processed frames successfully - Vulkan is working
+			result.VulkanDevice = "available"
+		} else if strings.Contains(output, "vulkan") {
 			result.VulkanDevice = "detected (init may have failed)"
 		}
 	}
