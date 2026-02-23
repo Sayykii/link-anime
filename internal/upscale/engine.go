@@ -37,18 +37,33 @@ func (e *Engine) getShaderPath(preset string) string {
 }
 
 // buildCommand constructs the FFmpeg command for upscaling.
+// Uses Vulkan for libplacebo upscaling and VAAPI for hardware-accelerated encoding.
 func (e *Engine) buildCommand(ctx context.Context, job *models.UpscaleJob) *exec.Cmd {
 	shaderPath := e.getShaderPath(job.Preset)
 
+	// Pipeline:
+	// 1. Decode on CPU (most compatible)
+	// 2. Upload to Vulkan GPU for libplacebo upscaling with Anime4K shaders
+	// 3. Download from Vulkan, upload to VAAPI for hardware encoding
+	// 4. Encode with HEVC VAAPI (Intel Quick Sync)
 	args := []string{
-		"-y",                        // Overwrite output
-		"-init_hw_device", "vulkan", // Initialize Vulkan
-		"-i", job.InputPath, // Input file
-		"-vf", fmt.Sprintf("libplacebo=w=iw*2:h=ih*2:custom_shader_path=%s", shaderPath),
-		"-c:v", "libx264", // Video codec
-		"-crf", "18", // Quality (lower = better)
-		"-preset", "medium", // Encoding speed/quality tradeoff
+		"-y", // Overwrite output
+		// Initialize Vulkan for libplacebo
+		"-init_hw_device", "vulkan=vk",
+		// Initialize VAAPI for encoding (uses same GPU)
+		"-init_hw_device", "vaapi=va:/dev/dri/renderD128",
+		"-i", job.InputPath,
+		// Video filter chain:
+		// - Upload to Vulkan
+		// - Apply libplacebo upscaling with Anime4K shader
+		// - Download from Vulkan to system memory
+		// - Upload to VAAPI for encoding
+		"-vf", fmt.Sprintf("hwupload=derive_device=vk,libplacebo=w=iw*2:h=ih*2:custom_shader_path=%s,hwdownload,format=nv12,hwupload=derive_device=va", shaderPath),
+		// HEVC VAAPI encoder settings
+		"-c:v", "hevc_vaapi",
+		"-qp", "22", // Quality parameter (lower = better, 18-28 is good range)
 		"-c:a", "copy", // Copy audio without re-encoding
+		"-c:s", "copy", // Copy subtitles
 		job.OutputPath,
 	}
 
