@@ -44,21 +44,29 @@ func (e *Engine) buildCommand(ctx context.Context, job *models.UpscaleJob) *exec
 	// Pipeline:
 	// 1. Decode on CPU (most compatible)
 	// 2. Upload to Vulkan GPU for libplacebo upscaling with Anime4K shaders
-	// 3. Download from Vulkan, upload to VAAPI for hardware encoding
-	// 4. Encode with HEVC VAAPI (Intel Quick Sync)
+	// 3. Download from Vulkan to system memory
+	// 4. Upload to VAAPI and encode with HEVC
+	//
+	// We use format=yuv420p before hwupload to VAAPI because VAAPI encoders
+	// typically expect this format. The explicit @device syntax ensures each
+	// hwupload goes to the correct hardware context.
 	args := []string{
 		"-y", // Overwrite output
-		// Initialize Vulkan for libplacebo
+		// Initialize Vulkan device for libplacebo
 		"-init_hw_device", "vulkan=vk",
-		// Initialize VAAPI for encoding (uses same GPU)
+		// Initialize VAAPI device for encoding
 		"-init_hw_device", "vaapi=va:/dev/dri/renderD128",
+		// Set Vulkan as default filter device (for libplacebo)
+		"-filter_hw_device", "vk",
 		"-i", job.InputPath,
-		// Video filter chain:
-		// - Upload to Vulkan
-		// - Apply libplacebo upscaling with Anime4K shader
-		// - Download from Vulkan to system memory
-		// - Upload to VAAPI for encoding
-		"-vf", fmt.Sprintf("hwupload=derive_device=vk,libplacebo=w=iw*2:h=ih*2:custom_shader_path=%s,hwdownload,format=nv12,hwupload=derive_device=va", shaderPath),
+		// Video filter chain with explicit device binding:
+		// 1. format=yuv420p - ensure compatible pixel format
+		// 2. hwupload - upload to Vulkan (uses filter_hw_device=vk)
+		// 3. libplacebo - upscale 2x with Anime4K shader
+		// 4. hwdownload - download from Vulkan to CPU
+		// 5. format=nv12 - convert to VAAPI-compatible format
+		// 6. hwupload=extra_hw_frames=64 - upload to VAAPI with frame buffer
+		"-vf", fmt.Sprintf("format=yuv420p,hwupload,libplacebo=w=iw*2:h=ih*2:custom_shader_path=%s,hwdownload,format=nv12,hwupload=extra_hw_frames=64:derive_device=va", shaderPath),
 		// HEVC VAAPI encoder settings
 		"-c:v", "hevc_vaapi",
 		"-qp", "22", // Quality parameter (lower = better, 18-28 is good range)
