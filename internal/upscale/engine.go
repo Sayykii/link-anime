@@ -54,8 +54,8 @@ func (e *Engine) buildCommand(ctx context.Context, job *models.UpscaleJob) *exec
 	// TODO: Revisit VAAPI encoding when FFmpeg/driver interop improves
 	args := []string{
 		"-y", // Overwrite output
-		// Initialize Vulkan device for libplacebo
-		"-init_hw_device", "vulkan=vk:/dev/dri/renderD128",
+		// Initialize Vulkan device for libplacebo (auto-detect GPU)
+		"-init_hw_device", "vulkan=vk",
 		// Set Vulkan as filter device for libplacebo
 		"-filter_hw_device", "vk",
 		"-i", job.InputPath,
