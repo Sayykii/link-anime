@@ -37,39 +37,39 @@ func (e *Engine) getShaderPath(preset string) string {
 }
 
 // buildCommand constructs the FFmpeg command for upscaling.
-// Uses Vulkan for libplacebo upscaling and VAAPI for hardware-accelerated encoding.
+// Uses Vulkan for libplacebo upscaling with Anime4K shaders.
 func (e *Engine) buildCommand(ctx context.Context, job *models.UpscaleJob) *exec.Cmd {
 	shaderPath := e.getShaderPath(job.Preset)
 
-	// Pipeline:
-	// 1. Decode on CPU (most compatible)
-	// 2. Upload to Vulkan GPU for libplacebo upscaling with Anime4K shaders
-	// 3. Download from Vulkan to system memory
-	// 4. Upload to VAAPI and encode with HEVC
+	// Pipeline: CPU decode → Vulkan (libplacebo with Anime4K) → CPU encode (HEVC)
 	//
-	// We use format=yuv420p before hwupload to VAAPI because VAAPI encoders
-	// typically expect this format. The explicit @device syntax ensures each
-	// hwupload goes to the correct hardware context.
+	// After extensive testing, combining Vulkan (for libplacebo) with VAAPI (for encoding)
+	// in the same pipeline causes "Out of memory" errors on hwupload between the two
+	// different hardware contexts. This appears to be a driver/FFmpeg interop issue.
+	//
+	// For now, we use CPU encoding with libx265 which is slower but reliable.
+	// The Vulkan GPU handles the heavy lifting (upscaling with Anime4K shaders),
+	// while CPU handles the final HEVC encoding.
+	//
+	// TODO: Revisit VAAPI encoding when FFmpeg/driver interop improves
 	args := []string{
 		"-y", // Overwrite output
 		// Initialize Vulkan device for libplacebo
-		"-init_hw_device", "vulkan=vk",
-		// Initialize VAAPI device for encoding
-		"-init_hw_device", "vaapi=va:/dev/dri/renderD128",
-		// Set Vulkan as default filter device (for libplacebo)
+		"-init_hw_device", "vulkan=vk:/dev/dri/renderD128",
+		// Set Vulkan as filter device for libplacebo
 		"-filter_hw_device", "vk",
 		"-i", job.InputPath,
-		// Video filter chain with explicit device binding:
-		// 1. format=yuv420p - ensure compatible pixel format
-		// 2. hwupload - upload to Vulkan (uses filter_hw_device=vk)
-		// 3. libplacebo - upscale 2x with Anime4K shader
-		// 4. hwdownload - download from Vulkan to CPU
-		// 5. format=nv12 - convert to VAAPI-compatible format
-		// 6. hwupload=extra_hw_frames=64 - upload to VAAPI with frame buffer
-		"-vf", fmt.Sprintf("format=yuv420p,hwupload,libplacebo=w=iw*2:h=ih*2:custom_shader_path=%s,hwdownload,format=nv12,hwupload=extra_hw_frames=64:derive_device=va", shaderPath),
-		// HEVC VAAPI encoder settings
-		"-c:v", "hevc_vaapi",
-		"-qp", "22", // Quality parameter (lower = better, 18-28 is good range)
+		// Video filter chain:
+		// 1. format=yuv420p: Normalize input format for Vulkan
+		// 2. hwupload: Upload to Vulkan GPU
+		// 3. libplacebo: Apply Anime4K shader and 2x upscale
+		// 4. hwdownload: Download from Vulkan back to CPU
+		// 5. format=yuv420p: Ensure output format for encoder
+		"-vf", fmt.Sprintf("format=yuv420p,hwupload,libplacebo=w=iw*2:h=ih*2:custom_shader_path=%s,hwdownload,format=yuv420p", shaderPath),
+		// HEVC CPU encoder (libx265)
+		"-c:v", "libx265",
+		"-preset", "medium", // Balance between speed and quality
+		"-crf", "22", // Quality (lower = better, 18-28 is good range)
 		"-c:a", "copy", // Copy audio without re-encoding
 		"-c:s", "copy", // Copy subtitles
 		job.OutputPath,

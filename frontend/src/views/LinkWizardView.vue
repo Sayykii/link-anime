@@ -297,7 +297,7 @@ function formatSize(bytes: number): string {
           <!-- Existing shows dropdown -->
           <div v-if="mediaType === 'series' && existingShows.length" class="space-y-1">
             <Label class="text-xs text-muted-foreground">Or select existing show:</Label>
-            <Select @update:model-value="(v: string) => showName = v">
+            <Select @update:model-value="(v) => { if (v) showName = String(v) }">
               <SelectTrigger>
                 <SelectValue placeholder="Select existing show..." />
               </SelectTrigger>
