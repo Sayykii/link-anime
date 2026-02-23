@@ -43,7 +43,9 @@ FROM alpine:3.21
 
 RUN apk add --no-cache ca-certificates tzdata shadow su-exec \
     # Upscale pipeline: FFmpeg with libplacebo + Vulkan GPU access
-    ffmpeg libplacebo vulkan-loader mesa-vulkan-intel x265-libs
+    ffmpeg libplacebo vulkan-loader mesa-vulkan-intel x265-libs \
+    # VAAPI hardware encoding (Intel Quick Sync)
+    libva libva-intel-driver intel-media-driver
 
 # Create app directory
 RUN mkdir -p /app/data
