@@ -75,10 +75,11 @@ func (e *Engine) Run(ctx context.Context, job *models.UpscaleJob, cb ProgressCal
 		return fmt.Errorf("start ffmpeg: %w", err)
 	}
 
-	// Parse progress from stderr in background
+	// Parse progress from stderr in background, capturing last lines for error context
 	done := make(chan struct{})
+	var lastLines []string
 	go func() {
-		parseProgress(stderr, duration, job.ID, cb)
+		lastLines = parseProgressWithCapture(stderr, duration, job.ID, cb)
 		close(done)
 	}()
 
@@ -93,6 +94,10 @@ func (e *Engine) Run(ctx context.Context, job *models.UpscaleJob, cb ProgressCal
 		// Check if cancelled
 		if ctx.Err() != nil {
 			return ctx.Err()
+		}
+		// Include last stderr lines in error for debugging
+		if len(lastLines) > 0 {
+			return fmt.Errorf("ffmpeg: %w\nstderr: %s", err, strings.Join(lastLines, "\n"))
 		}
 		return fmt.Errorf("ffmpeg: %w", err)
 	}

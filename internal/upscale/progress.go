@@ -122,3 +122,68 @@ func parseProgress(r io.Reader, totalDuration float64, jobID int64, cb ProgressC
 		})
 	}
 }
+
+// parseProgressWithCapture is like parseProgress but also captures the last N lines
+// of stderr output for error reporting when ffmpeg fails.
+func parseProgressWithCapture(r io.Reader, totalDuration float64, jobID int64, cb ProgressCallback) []string {
+	const maxLines = 10 // Keep last 10 lines for error context
+
+	scanner := bufio.NewScanner(r)
+	scanner.Split(scanFFmpegLines)
+
+	var lastUpdate time.Time
+	var lastLines []string
+
+	for scanner.Scan() {
+		line := scanner.Text()
+
+		// Capture last N lines for error context
+		if len(line) > 0 {
+			lastLines = append(lastLines, line)
+			if len(lastLines) > maxLines {
+				lastLines = lastLines[1:]
+			}
+		}
+
+		if cb == nil {
+			continue
+		}
+
+		matches := progressRegex.FindStringSubmatch(line)
+		if matches == nil {
+			continue
+		}
+
+		// Throttle updates to ~1 per second
+		if time.Since(lastUpdate) < time.Second {
+			continue
+		}
+		lastUpdate = time.Now()
+
+		// Extract values from regex groups
+		frame, _ := strconv.Atoi(matches[1])
+		fps, _ := strconv.ParseFloat(matches[2], 64)
+		timeStr := matches[3]
+
+		// Calculate percentage from time vs total duration
+		currentSeconds := parseTimeToSeconds(timeStr)
+		var percent float64
+		if totalDuration > 0 {
+			percent = (currentSeconds / totalDuration) * 100
+			if percent > 100 {
+				percent = 100
+			}
+		}
+
+		// Call progress callback
+		cb(models.UpscaleProgress{
+			JobID:   jobID,
+			Frame:   frame,
+			FPS:     fps,
+			Time:    timeStr,
+			Percent: percent,
+		})
+	}
+
+	return lastLines
+}
