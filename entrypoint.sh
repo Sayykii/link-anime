@@ -35,5 +35,8 @@ fi
 # Ensure correct ownership of app data
 chown -R "$PUID":"$PGID" /app/data
 
+# Set Intel VAAPI driver (iHD for Gen 8+ / Broadwell+)
+export LIBVA_DRIVER_NAME=iHD
+
 # Run as the created user (use username to inherit supplementary groups)
 exec su-exec linkanime "$@"
