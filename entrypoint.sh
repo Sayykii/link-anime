@@ -35,5 +35,5 @@ fi
 # Ensure correct ownership of app data
 chown -R "$PUID":"$PGID" /app/data
 
-# Run as the created user
-exec su-exec "$PUID":"$PGID" "$@"
+# Run as the created user (use username to inherit supplementary groups)
+exec su-exec linkanime "$@"
