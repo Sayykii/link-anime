@@ -104,10 +104,10 @@ Plans:
   1. useApi has methods for all upscale endpoints (list, create, get, delete, cancel, probe)
   2. WebSocket listeners handle upscale_progress/complete/failed messages
   3. Pinia store (or composable) maintains upscale jobs state
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 06-01: API client methods and WebSocket listeners
+- [ ] 06-01-PLAN.md — Add upscale API methods and create Pinia store with WebSocket listeners
 
 ### Phase 7: Frontend UI
 **Goal**: Users can trigger, monitor, and manage upscale jobs from Downloads view
@@ -138,8 +138,8 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 2. Engine | 2/2 | Complete   | 2026-02-22 |
 | 3. Worker | 2/2 | Complete   | 2026-02-22 |
 | 4. API | 2/2 | Complete | 2026-02-22 |
-| 5. WebSocket | 0/1 | Not started | - |
-| 6. Frontend Integration | 0/1 | Not started | - |
+| 5. WebSocket | 1/1 | Complete | 2026-02-22 |
+| 6. Frontend Integration | 1/2 | In Progress | - |
 | 7. Frontend UI | 0/3 | Not started | - |
 
 ---

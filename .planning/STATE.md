@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-22)
 
 **Core value:** Users can upscale their anime downloads to 4K quality through a simple queue-based interface, with real-time progress feedback.
-**Current focus:** Phase 5 - WebSocket
+**Current focus:** Phase 6 - Frontend Integration
 
 ## Current Position
 
-Phase: 5 of 7 (WebSocket)
-Plan: 1 of 1 in current phase (Phase 5 complete)
-Status: Phase 5 complete
-Last activity: 2026-02-22 — Completed 05-01-PLAN.md
+Phase: 6 of 7 (Frontend Integration)
+Plan: 1 of 2 in current phase
+Status: In progress
+Last activity: 2026-02-23 — Completed 06-01-PLAN.md
 
-Progress: [████████░░] 82%
+Progress: [████████░░] 86%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 9
+- Total plans completed: 10
 - Average duration: 1 min
-- Total execution time: 0.15 hours
+- Total execution time: 0.18 hours
 
 **By Phase:**
 
@@ -32,6 +32,7 @@ Progress: [████████░░] 82%
 | 03-worker | 2 | 4 min | 2 min |
 | 04-api | 2 | 2 min | 1 min |
 | 05-websocket | 1 | 1 min | 1 min |
+| 06-frontend-integration | 1 | 1 min | 1 min |
 
 **Recent Trend:**
 - Last 5 plans: -
@@ -74,6 +75,9 @@ Recent decisions affecting current work:
 
 - Message contracts match Go worker.go broadcast payloads exactly (TypeScript types for WS)
 
+- Progress stored as Record<number, UpscaleProgress> for O(1) lookup by jobId
+- setupListeners() called once after ws.connect() - not auto-invoked
+
 ### Pending Todos
 
 None yet.
@@ -84,6 +88,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-22
-Stopped at: Completed 05-01-PLAN.md (Phase 05 complete)
+Last session: 2026-02-23
+Stopped at: Completed 06-01-PLAN.md
 Resume file: None

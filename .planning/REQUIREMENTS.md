@@ -55,8 +55,8 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Frontend - API Integration
 
-- [ ] **FE-01**: useApi methods for all upscale endpoints
-- [ ] **FE-02**: WebSocket listeners for upscale_progress/complete/failed
+- [x] **FE-01**: useApi methods for all upscale endpoints
+- [x] **FE-02**: WebSocket listeners for upscale_progress/complete/failed
 
 ## v2 Requirements
 
@@ -118,8 +118,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | UI-05 | Phase 7 | Pending |
 | UI-06 | Phase 7 | Pending |
 | UI-07 | Phase 7 | Pending |
-| FE-01 | Phase 6 | Pending |
-| FE-02 | Phase 6 | Pending |
+| FE-01 | Phase 6 | Complete |
+| FE-02 | Phase 6 | Complete |
 
 **Coverage:**
 - v1 requirements: 30 total
@@ -128,4 +128,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-02-22*
-*Last updated: 2026-02-22 after roadmap creation*
+*Last updated: 2026-02-23 after 06-01-PLAN.md completion*
