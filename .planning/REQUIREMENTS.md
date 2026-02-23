@@ -45,13 +45,13 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Frontend - Downloads View
 
-- [ ] **UI-01**: Upscale button on download items (when probe available)
-- [ ] **UI-02**: Preset picker dialog (Fast/Balanced/Quality)
-- [ ] **UI-03**: Upscale Queue tab with job list
+- [x] **UI-01**: Upscale button on download items (when probe available)
+- [x] **UI-02**: Preset picker dialog (Fast/Balanced/Quality)
+- [x] **UI-03**: Upscale Queue tab with job list
 - [ ] **UI-04**: Progress bar + FPS for running jobs (via WebSocket)
 - [ ] **UI-05**: Cancel button for running/pending jobs
 - [ ] **UI-06**: Delete button for completed/failed jobs
-- [ ] **UI-07**: 4K badge on items with completed upscale
+- [x] **UI-07**: 4K badge on items with completed upscale
 
 ### Frontend - API Integration
 
@@ -111,13 +111,13 @@ Which phases cover which requirements. Updated during roadmap creation.
 | WS-01 | Phase 5 | Complete |
 | WS-02 | Phase 5 | Complete |
 | WS-03 | Phase 5 | Complete |
-| UI-01 | Phase 7 | Pending |
-| UI-02 | Phase 7 | Pending |
-| UI-03 | Phase 7 | Pending |
+| UI-01 | Phase 7 | Complete |
+| UI-02 | Phase 7 | Complete |
+| UI-03 | Phase 7 | Complete |
 | UI-04 | Phase 7 | Pending |
 | UI-05 | Phase 7 | Pending |
 | UI-06 | Phase 7 | Pending |
-| UI-07 | Phase 7 | Pending |
+| UI-07 | Phase 7 | Complete |
 | FE-01 | Phase 6 | Complete |
 | FE-02 | Phase 6 | Complete |
 

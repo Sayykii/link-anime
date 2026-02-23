@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-22)
 
 **Core value:** Users can upscale their anime downloads to 4K quality through a simple queue-based interface, with real-time progress feedback.
-**Current focus:** Phase 6 - Frontend Integration
+**Current focus:** Phase 7 - Frontend UI
 
 ## Current Position
 
-Phase: 6 of 7 (Frontend Integration)
-Plan: 1 of 2 in current phase
+Phase: 7 of 7 (Frontend UI)
+Plan: 2 of 2 in current phase
 Status: In progress
-Last activity: 2026-02-23 — Completed 06-01-PLAN.md
+Last activity: 2026-02-23 — Completed 07-01-PLAN.md
 
-Progress: [████████░░] 86%
+Progress: [█████████░] 92%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 10
+- Total plans completed: 11
 - Average duration: 1 min
-- Total execution time: 0.18 hours
+- Total execution time: 0.23 hours
 
 **By Phase:**
 
@@ -33,6 +33,7 @@ Progress: [████████░░] 86%
 | 04-api | 2 | 2 min | 1 min |
 | 05-websocket | 1 | 1 min | 1 min |
 | 06-frontend-integration | 1 | 1 min | 1 min |
+| 07-frontend-ui | 1 | 3 min | 3 min |
 
 **Recent Trend:**
 - Last 5 plans: -
@@ -78,6 +79,10 @@ Recent decisions affecting current work:
 - Progress stored as Record<number, UpscaleProgress> for O(1) lookup by jobId
 - setupListeners() called once after ws.connect() - not auto-invoked
 
+- Preset selection via dialog for better UX (shows descriptions)
+- 4K badge tracks completed upscales by inputPath
+- Queue tab placeholder shows count only (table in Plan 02)
+
 ### Pending Todos
 
 None yet.
@@ -89,5 +94,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-23
-Stopped at: Completed 06-01-PLAN.md
+Stopped at: Completed 07-01-PLAN.md
 Resume file: None

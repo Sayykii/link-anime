@@ -120,12 +120,11 @@ Plans:
   4. Running jobs display progress bar + FPS (updated via WebSocket)
   5. Cancel button stops running/pending jobs; Delete button removes completed/failed
   6. 4K badge appears on items with completed upscale
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 07-01: Upscale button and preset picker
-- [ ] 07-02: Upscale Queue tab
-- [ ] 07-03: Job controls and 4K badge
+- [ ] 07-01-PLAN.md — Add upscale button, preset dialog, queue tab structure, 4K badge
+- [ ] 07-02-PLAN.md — Add job table with progress display, cancel/delete actions
 
 ## Progress
 
@@ -140,7 +139,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 4. API | 2/2 | Complete | 2026-02-22 |
 | 5. WebSocket | 1/1 | Complete | 2026-02-22 |
 | 6. Frontend Integration | 1/2 | In Progress | - |
-| 7. Frontend UI | 0/3 | Not started | - |
+| 7. Frontend UI | 0/2 | Not started | - |
 
 ---
 *Roadmap created: 2026-02-22*
