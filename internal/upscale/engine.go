@@ -38,48 +38,73 @@ func (e *Engine) getShaderPath(preset string) string {
 
 // buildCommand constructs the FFmpeg command for upscaling.
 // Uses Vulkan for libplacebo upscaling with Anime4K shaders.
-func (e *Engine) buildCommand(ctx context.Context, job *models.UpscaleJob) *exec.Cmd {
+// Attempts QSV hardware encoding first, falls back to x265 CPU encoding.
+func (e *Engine) buildCommand(ctx context.Context, job *models.UpscaleJob, useQSV bool) *exec.Cmd {
 	shaderPath := e.getShaderPath(job.Preset)
 
-	// Pipeline: CPU decode → Vulkan (libplacebo with Anime4K) → CPU encode (HEVC)
+	// Pipeline: CPU decode → Vulkan (libplacebo with Anime4K) → QSV/CPU encode (HEVC)
 	//
-	// After extensive testing, combining Vulkan (for libplacebo) with VAAPI (for encoding)
-	// in the same pipeline causes "Out of memory" errors on hwupload between the two
-	// different hardware contexts. This appears to be a driver/FFmpeg interop issue.
+	// We use Vulkan for GPU-accelerated upscaling with Anime4K shaders.
+	// For encoding, we try QSV (Intel Quick Sync) first for 3-5x speedup,
+	// falling back to x265 CPU encoding if QSV isn't available.
 	//
-	// For now, we use CPU encoding with libx265 which is slower but reliable.
-	// The Vulkan GPU handles the heavy lifting (upscaling with Anime4K shaders),
-	// while CPU handles the final HEVC encoding.
-	//
-	// TODO: Revisit VAAPI encoding when FFmpeg/driver interop improves
+	// Note: QSV and Vulkan use separate hardware contexts. The frames go:
+	// CPU → Vulkan GPU (upscale) → CPU → QSV GPU (encode)
+	// This avoids the VAAPI interop issues we encountered.
+
 	args := []string{
 		"-y", // Overwrite output
 		// Initialize Vulkan device for libplacebo (auto-detect GPU)
 		"-init_hw_device", "vulkan=vk",
 		// Set Vulkan as filter device for libplacebo
 		"-filter_hw_device", "vk",
-		"-i", job.InputPath,
-		// Video filter chain:
-		// 1. format=yuv420p: Normalize input format for Vulkan
-		// 2. hwupload: Upload to Vulkan GPU
-		// 3. libplacebo: Apply Anime4K shader and 2x upscale
-		// 4. hwdownload: Download from Vulkan back to CPU
-		// 5. format=yuv420p: Ensure output format for encoder
-		"-vf", fmt.Sprintf("format=yuv420p,hwupload,libplacebo=w=iw*2:h=ih*2:custom_shader_path=%s,hwdownload,format=yuv420p", shaderPath),
-		// HEVC CPU encoder (libx265)
-		"-c:v", "libx265",
-		"-preset", "medium", // Balance between speed and quality
-		"-crf", "22", // Quality (lower = better, 18-28 is good range)
+	}
+
+	// Add QSV device if using hardware encoding
+	if useQSV {
+		args = append(args, "-init_hw_device", "qsv=qs")
+	}
+
+	args = append(args, "-i", job.InputPath)
+
+	// Video filter chain for upscaling
+	// 1. format=yuv420p: Normalize input format for Vulkan
+	// 2. hwupload: Upload to Vulkan GPU
+	// 3. libplacebo: Apply Anime4K shader and 2x upscale (frame_mixer=none skips unneeded temporal processing)
+	// 4. hwdownload: Download from Vulkan back to CPU
+	// 5. format=nv12: QSV prefers NV12, x265 works with both
+	vf := fmt.Sprintf("format=yuv420p,hwupload,libplacebo=w=iw*2:h=ih*2:custom_shader_path=%s:frame_mixer=none,hwdownload,format=nv12", shaderPath)
+
+	if useQSV {
+		// Add QSV hwupload for hardware encoding
+		vf += ",hwupload=extra_hw_frames=64"
+		args = append(args,
+			"-vf", vf,
+			"-c:v", "hevc_qsv",
+			"-global_quality", "22", // Similar to CRF 22
+			"-preset", "medium", // QSV presets: veryfast, faster, fast, medium, slow, veryslow
+		)
+	} else {
+		args = append(args,
+			"-vf", vf,
+			"-c:v", "libx265",
+			"-preset", "veryfast",
+			"-crf", "22",
+		)
+	}
+
+	args = append(args,
 		"-c:a", "copy", // Copy audio without re-encoding
 		"-c:s", "copy", // Copy subtitles
 		job.OutputPath,
-	}
+	)
 
 	return exec.CommandContext(ctx, "ffmpeg", args...)
 }
 
 // Run executes an upscaling job with progress reporting.
 // It blocks until the job completes or the context is cancelled.
+// Tries QSV hardware encoding first, falls back to x265 if QSV fails.
 func (e *Engine) Run(ctx context.Context, job *models.UpscaleJob, cb ProgressCallback) error {
 	// Get duration for percentage calculation
 	duration, err := ProbeDuration(ctx, job.InputPath)
@@ -87,8 +112,33 @@ func (e *Engine) Run(ctx context.Context, job *models.UpscaleJob, cb ProgressCal
 		return fmt.Errorf("probe duration: %w", err)
 	}
 
-	// Build and start FFmpeg
-	cmd := e.buildCommand(ctx, job)
+	// Try QSV first, fall back to x265 if it fails
+	useQSV := true
+	for {
+		err := e.runFFmpeg(ctx, job, duration, useQSV, cb)
+		if err == nil {
+			return nil
+		}
+
+		// If QSV failed and we haven't tried x265 yet, fall back
+		if useQSV && !isContextError(ctx, err) {
+			// Log QSV failure and retry with x265
+			useQSV = false
+			continue
+		}
+
+		return err
+	}
+}
+
+// isContextError checks if the error is due to context cancellation
+func isContextError(ctx context.Context, err error) bool {
+	return ctx.Err() != nil
+}
+
+// runFFmpeg executes a single FFmpeg encoding attempt
+func (e *Engine) runFFmpeg(ctx context.Context, job *models.UpscaleJob, duration float64, useQSV bool, cb ProgressCallback) error {
+	cmd := e.buildCommand(ctx, job, useQSV)
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
 		return fmt.Errorf("stderr pipe: %w", err)
@@ -119,10 +169,14 @@ func (e *Engine) Run(ctx context.Context, job *models.UpscaleJob, cb ProgressCal
 			return ctx.Err()
 		}
 		// Include last stderr lines in error for debugging
-		if len(lastLines) > 0 {
-			return fmt.Errorf("ffmpeg: %w\nstderr: %s", err, strings.Join(lastLines, "\n"))
+		encoder := "x265"
+		if useQSV {
+			encoder = "QSV"
 		}
-		return fmt.Errorf("ffmpeg: %w", err)
+		if len(lastLines) > 0 {
+			return fmt.Errorf("ffmpeg (%s): %w\nstderr: %s", encoder, err, strings.Join(lastLines, "\n"))
+		}
+		return fmt.Errorf("ffmpeg (%s): %w", encoder, err)
 	}
 
 	return nil

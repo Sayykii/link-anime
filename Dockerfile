@@ -41,11 +41,14 @@ RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /link-anime ./cmd/serv
 # ============================================================
 FROM alpine:3.21
 
+# v2: Added libmfx for QSV support
 RUN apk add --no-cache ca-certificates tzdata shadow su-exec \
     # Upscale pipeline: FFmpeg with libplacebo + Vulkan GPU access
     ffmpeg libplacebo vulkan-loader mesa-vulkan-intel x265-libs \
-    # VAAPI hardware encoding (Intel Quick Sync)
-    libva libva-intel-driver intel-media-driver
+    # Intel Quick Sync Video (QSV) - need both oneVPL runtime AND libmfx for full support
+    onevpl onevpl-libs intel-media-sdk libmfx intel-media-driver \
+    # VAAPI (fallback for hardware access)
+    libva libva-intel-driver
 
 # Create app directory
 RUN mkdir -p /app/data
