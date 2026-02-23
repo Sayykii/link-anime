@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"io"
+	"log"
 	"regexp"
 	"strconv"
 	"strings"
@@ -133,6 +134,7 @@ func parseProgressWithCapture(r io.Reader, totalDuration float64, jobID int64, c
 
 	var lastUpdate time.Time
 	var lastLines []string
+	var matchCount int
 
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -153,6 +155,7 @@ func parseProgressWithCapture(r io.Reader, totalDuration float64, jobID int64, c
 		if matches == nil {
 			continue
 		}
+		matchCount++
 
 		// Throttle updates to ~1 per second
 		if time.Since(lastUpdate) < time.Second {
@@ -175,6 +178,8 @@ func parseProgressWithCapture(r io.Reader, totalDuration float64, jobID int64, c
 			}
 		}
 
+		log.Printf("[upscale] progress: job=%d frame=%d fps=%.1f time=%s percent=%.1f%%", jobID, frame, fps, timeStr, percent)
+
 		// Call progress callback
 		cb(models.UpscaleProgress{
 			JobID:   jobID,
@@ -183,6 +188,10 @@ func parseProgressWithCapture(r io.Reader, totalDuration float64, jobID int64, c
 			Time:    timeStr,
 			Percent: percent,
 		})
+	}
+
+	if matchCount == 0 {
+		log.Printf("[upscale] warning: no progress lines matched for job %d", jobID)
 	}
 
 	return lastLines
