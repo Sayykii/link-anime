@@ -2,7 +2,6 @@ package upscale
 
 import (
 	"fmt"
-	"log"
 	"os/exec"
 	"strings"
 )
@@ -47,15 +46,6 @@ func Probe() (*ProbeResult, error) {
 	vulkanOut, err := exec.Command("ffmpeg", "-init_hw_device", "vulkan", "-f", "lavfi", "-i",
 		"nullsrc=s=64x64:d=1", "-frames:v", "1", "-f", "null", "-").CombinedOutput()
 	output := string(vulkanOut)
-	log.Printf("[probe] Vulkan test: err=%v outputLen=%d", err, len(output))
-	if len(output) > 0 {
-		// Print last 500 chars of output for debugging
-		start := 0
-		if len(output) > 500 {
-			start = len(output) - 500
-		}
-		log.Printf("[probe] Vulkan output (last 500 chars): %s", output[start:])
-	}
 	if err == nil {
 		result.VulkanDevice = "available"
 	} else {
