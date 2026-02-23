@@ -2,6 +2,7 @@ package upscale
 
 import (
 	"fmt"
+	"log"
 	"os/exec"
 	"strings"
 )
@@ -45,11 +46,13 @@ func Probe() (*ProbeResult, error) {
 	// 3. Try to detect Vulkan device (best-effort, non-fatal)
 	vulkanOut, err := exec.Command("ffmpeg", "-init_hw_device", "vulkan", "-f", "lavfi", "-i",
 		"nullsrc=s=64x64:d=1", "-frames:v", "1", "-f", "null", "-").CombinedOutput()
+	output := string(vulkanOut)
+	log.Printf("[probe] Vulkan test: err=%v outputLen=%d hasFrame=%v hasLsize=%v",
+		err, len(output), strings.Contains(output, "frame="), strings.Contains(output, "Lsize="))
 	if err == nil {
 		result.VulkanDevice = "available"
 	} else {
 		// Check if output contains success indicators despite non-zero exit
-		output := string(vulkanOut)
 		if strings.Contains(output, "frame=") && strings.Contains(output, "Lsize=") {
 			// FFmpeg processed frames successfully - Vulkan is working
 			result.VulkanDevice = "available"
