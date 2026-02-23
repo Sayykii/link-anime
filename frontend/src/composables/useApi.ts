@@ -1,4 +1,4 @@
-import type { LinkRequest, LinkResult, LibraryStats, Show, Movie, DownloadItem, HistoryEntry, ParseResult, Settings, TorrentStatus, NyaaResult, RSSRule, RSSMatch, UnlinkPreview } from '@/lib/types'
+import type { LinkRequest, LinkResult, LibraryStats, Show, Movie, DownloadItem, HistoryEntry, ParseResult, Settings, TorrentStatus, NyaaResult, RSSRule, RSSMatch, UnlinkPreview, UpscaleJob, ProbeResult } from '@/lib/types'
 
 class ApiError extends Error {
   status: number
@@ -92,5 +92,14 @@ export function useApi() {
     listRSSMatches: (ruleId?: number, limit?: number) => request<RSSMatch[]>('GET', `/rss/matches?${ruleId ? `ruleId=${ruleId}&` : ''}${limit ? `limit=${limit}` : ''}`),
     clearRSSMatches: (ruleId: number) => request<{ ok: boolean }>('DELETE', '/rss/matches', { ruleId }),
     rssPollNow: () => request<{ ok: boolean }>('POST', '/rss/poll'),
+
+    // Upscale
+    listUpscaleJobs: () => request<UpscaleJob[]>('GET', '/upscale/jobs'),
+    createUpscaleJob: (inputPath: string, preset: string) =>
+      request<UpscaleJob>('POST', '/upscale/jobs', { inputPath, preset }),
+    getUpscaleJob: (id: number) => request<UpscaleJob>('GET', `/upscale/jobs/${id}`),
+    deleteUpscaleJob: (id: number) => request<{ deleted: boolean }>('DELETE', `/upscale/jobs/${id}`),
+    cancelUpscaleJob: (id: number) => request<{ cancelled: boolean }>('POST', `/upscale/jobs/${id}/cancel`),
+    probeUpscale: () => request<ProbeResult>('GET', '/upscale/probe'),
   }
 }

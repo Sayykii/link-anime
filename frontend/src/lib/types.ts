@@ -204,3 +204,9 @@ export interface UpscaleFailedMessage {
 
 // Union type for all upscale WebSocket messages
 export type UpscaleWSMessage = UpscaleProgressMessage | UpscaleCompleteMessage | UpscaleFailedMessage
+
+export interface ProbeResult {
+  FFmpegFound: boolean
+  LibplaceboOK: boolean
+  VulkanDevice: string
+}
