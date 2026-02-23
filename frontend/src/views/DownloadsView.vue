@@ -357,6 +357,44 @@ async function submitUpscale() {
 function hasUpscaled(item: DownloadItem): boolean {
   return completedUpscalePaths.value.has(item.path)
 }
+
+// === Upscale queue helper functions ===
+function extractFileName(path: string): string {
+  return path.split('/').pop() || path
+}
+
+function statusVariant(status: string): 'default' | 'secondary' | 'outline' | 'destructive' {
+  switch (status) {
+    case 'running': return 'default'
+    case 'pending': return 'outline'
+    case 'completed': return 'secondary'
+    case 'failed': return 'destructive'
+    case 'cancelled': return 'outline'
+    default: return 'outline'
+  }
+}
+
+function statusLabel(status: string): string {
+  return status.charAt(0).toUpperCase() + status.slice(1)
+}
+
+async function handleCancel(id: number) {
+  try {
+    await upscaleStore.cancelJob(id)
+    toast.success('Job cancelled')
+  } catch (e: unknown) {
+    toast.error(e instanceof Error ? e.message : 'Failed to cancel job')
+  }
+}
+
+async function handleDelete(id: number) {
+  try {
+    await upscaleStore.deleteJob(id)
+    toast.success('Job removed')
+  } catch (e: unknown) {
+    toast.error(e instanceof Error ? e.message : 'Failed to delete job')
+  }
+}
 </script>
 
 <template>
@@ -741,13 +779,132 @@ function hasUpscaled(item: DownloadItem): boolean {
             </Button>
           </CardHeader>
           <CardContent>
+            <!-- Empty state -->
             <div v-if="!upscaleStore.jobs.length" class="text-center text-muted-foreground py-8">
               No upscale jobs. Select a file and click "Upscale" to get started.
             </div>
-            <!-- Job list table added in Plan 02 -->
-            <div v-else class="text-muted-foreground text-sm">
-              {{ upscaleStore.jobs.length }} jobs in queue
-            </div>
+
+            <template v-else>
+              <!-- Desktop: Table layout -->
+              <div class="hidden md:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>File</TableHead>
+                      <TableHead class="w-24">Preset</TableHead>
+                      <TableHead class="w-24">Status</TableHead>
+                      <TableHead class="w-48">Progress</TableHead>
+                      <TableHead class="w-10"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    <TableRow v-for="job in upscaleStore.jobs" :key="job.id">
+                      <TableCell class="font-medium max-w-sm truncate">
+                        {{ extractFileName(job.inputPath) }}
+                      </TableCell>
+                      <TableCell class="capitalize">{{ job.preset }}</TableCell>
+                      <TableCell>
+                        <Badge :variant="statusVariant(job.status)">
+                          {{ statusLabel(job.status) }}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <template v-if="job.status === 'running' && upscaleStore.progress[job.id]">
+                          <div class="flex items-center gap-2">
+                            <Progress :model-value="upscaleStore.progress[job.id]?.percent ?? 0" class="w-20 h-2" />
+                            <span class="text-xs tabular-nums">
+                              {{ upscaleStore.progress[job.id]?.percent?.toFixed(1) ?? '0.0' }}%
+                            </span>
+                            <span class="text-xs text-muted-foreground tabular-nums">
+                              {{ upscaleStore.progress[job.id]?.fps?.toFixed(1) ?? '0.0' }} fps
+                            </span>
+                          </div>
+                        </template>
+                        <template v-else-if="job.status === 'failed'">
+                          <span class="text-xs text-destructive truncate max-w-32" :title="job.error">
+                            {{ job.error }}
+                          </span>
+                        </template>
+                        <span v-else class="text-muted-foreground">-</span>
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          v-if="job.status === 'running' || job.status === 'pending'"
+                          size="sm"
+                          variant="ghost"
+                          @click="handleCancel(job.id)"
+                          title="Cancel"
+                        >
+                          <X class="h-4 w-4" />
+                        </Button>
+                        <Button
+                          v-else
+                          size="sm"
+                          variant="ghost"
+                          @click="handleDelete(job.id)"
+                          title="Remove"
+                        >
+                          <Trash2 class="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </div>
+
+              <!-- Mobile: Stacked card layout -->
+              <div class="md:hidden space-y-3">
+                <div
+                  v-for="job in upscaleStore.jobs"
+                  :key="'m-' + job.id"
+                  class="rounded-lg border p-3 space-y-2"
+                >
+                  <div class="flex items-start justify-between gap-2">
+                    <div class="font-medium text-sm leading-tight break-all min-w-0 flex-1">
+                      {{ extractFileName(job.inputPath) }}
+                    </div>
+                    <Button
+                      v-if="job.status === 'running' || job.status === 'pending'"
+                      size="sm"
+                      variant="ghost"
+                      class="h-7 w-7 p-0 shrink-0"
+                      @click="handleCancel(job.id)"
+                    >
+                      <X class="h-4 w-4" />
+                    </Button>
+                    <Button
+                      v-else
+                      size="sm"
+                      variant="ghost"
+                      class="h-7 w-7 p-0 shrink-0"
+                      @click="handleDelete(job.id)"
+                    >
+                      <Trash2 class="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <Badge :variant="statusVariant(job.status)" class="text-xs">
+                      {{ statusLabel(job.status) }}
+                    </Badge>
+                    <span class="text-xs text-muted-foreground capitalize">{{ job.preset }}</span>
+                  </div>
+                  <template v-if="job.status === 'running' && upscaleStore.progress[job.id]">
+                    <div class="flex items-center gap-2">
+                      <Progress :model-value="upscaleStore.progress[job.id]?.percent ?? 0" class="flex-1 h-2" />
+                      <span class="text-xs tabular-nums shrink-0">
+                        {{ upscaleStore.progress[job.id]?.percent?.toFixed(1) ?? '0.0' }}%
+                      </span>
+                    </div>
+                    <div class="text-xs text-muted-foreground">
+                      {{ upscaleStore.progress[job.id]?.fps?.toFixed(1) ?? '0.0' }} fps
+                    </div>
+                  </template>
+                  <div v-else-if="job.status === 'failed'" class="text-xs text-destructive truncate">
+                    {{ job.error }}
+                  </div>
+                </div>
+              </div>
+            </template>
           </CardContent>
         </Card>
       </TabsContent>
