@@ -106,6 +106,27 @@ func ResetRunningJob(id int64) error {
 	return nil
 }
 
+// ResetStuckJobs resets all jobs stuck in "running" status back to pending.
+// This should be called on startup to recover from unexpected shutdowns.
+func ResetStuckJobs() (int64, error) {
+	result, err := DB.Exec(`
+		UPDATE upscale_jobs 
+		SET status = ?, started_at = NULL 
+		WHERE status = ?
+	`, models.UpscaleStatusPending, models.UpscaleStatusRunning)
+
+	if err != nil {
+		return 0, fmt.Errorf("reset stuck jobs: %w", err)
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("rows affected: %w", err)
+	}
+
+	return rows, nil
+}
+
 // ListJobs returns all upscale jobs sorted by created_at DESC (newest first).
 func ListJobs() ([]models.UpscaleJob, error) {
 	rows, err := DB.Query(`

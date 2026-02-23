@@ -66,6 +66,14 @@ func (h *Hub) Broadcast(msg interface{}) {
 	}
 
 	h.mu.RLock()
+	clientCount := len(h.clients)
+	h.mu.RUnlock()
+
+	if clientCount == 0 {
+		return // No clients connected
+	}
+
+	h.mu.RLock()
 	defer h.mu.RUnlock()
 
 	for client := range h.clients {

@@ -39,6 +39,13 @@ func NewWorker(hub *ws.Hub, shaderDir string) *Worker {
 
 // Start begins the worker loop in a goroutine.
 func (w *Worker) Start() {
+	// Reset any jobs stuck in "running" state from previous unclean shutdown
+	if count, err := database.ResetStuckJobs(); err != nil {
+		log.Printf("[upscale] error resetting stuck jobs: %v", err)
+	} else if count > 0 {
+		log.Printf("[upscale] reset %d stuck job(s) to pending", count)
+	}
+
 	go w.run()
 }
 

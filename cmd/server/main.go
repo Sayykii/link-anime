@@ -101,6 +101,7 @@ func main() {
 	upscaleWorker := upscale.NewWorker(hub, upscale.ShaderDir)
 	upscaleWorker.Start()
 	defer upscaleWorker.Stop()
+	server.Worker = upscaleWorker
 
 	// Embed frontend static files
 	var staticFS http.FileSystem

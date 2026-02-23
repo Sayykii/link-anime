@@ -153,6 +153,10 @@ func (s *Server) handleCancelUpscaleJob(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// Try to cancel via worker
+	if s.Worker == nil {
+		jsonError(w, "upscale worker not initialized", http.StatusInternalServerError)
+		return
+	}
 	if !s.Worker.CancelJob(id) {
 		jsonError(w, "job no longer running", http.StatusConflict)
 		return
