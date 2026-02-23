@@ -43,6 +43,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { toast } from 'vue-sonner'
 import {
   FolderOpen,
@@ -379,6 +387,16 @@ function hasUpscaled(item: DownloadItem): boolean {
             <Search class="h-4 w-4" />
             Nyaa
           </TabsTrigger>
+          <TabsTrigger value="upscale" class="gap-2">
+            <Sparkles class="h-4 w-4" />
+            <span class="hidden sm:inline">Upscale Queue</span>
+            <span class="sm:hidden">Upscale</span>
+            <span
+              v-if="upscaleStore.runningJob"
+              class="ml-1 h-2 w-2 rounded-full bg-green-500 animate-pulse"
+              title="Upscale in progress"
+            ></span>
+          </TabsTrigger>
         </TabsList>
 
         <!-- Global filter input -->
@@ -437,6 +455,19 @@ function hasUpscaled(item: DownloadItem): boolean {
                     &middot; {{ formatSize(item.size) }}
                   </div>
                 </div>
+                <Badge v-if="hasUpscaled(item)" variant="secondary" class="text-xs shrink-0">
+                  4K
+                </Badge>
+                <Button
+                  v-if="upscaleStore.pipelineAvailable && !item.isDir"
+                  size="sm"
+                  variant="outline"
+                  @click="openUpscaleDialog(item)"
+                  class="gap-1 shrink-0"
+                >
+                  <Sparkles class="h-3 w-3" />
+                  Upscale
+                </Button>
                 <Button size="sm" variant="outline" @click="goToLink(item.name)" class="gap-1 shrink-0">
                   <Link class="h-3 w-3" />
                   Link
@@ -692,6 +723,34 @@ function hasUpscaled(item: DownloadItem): boolean {
           </CardContent>
         </Card>
       </TabsContent>
+
+      <!-- Upscale Queue -->
+      <TabsContent value="upscale">
+        <Card>
+          <CardHeader class="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle>Upscale Queue</CardTitle>
+              <CardDescription>
+                {{ upscaleStore.jobs.length }} job{{ upscaleStore.jobs.length !== 1 ? 's' : '' }}
+                <template v-if="upscaleStore.runningJob"> — 1 running</template>
+              </CardDescription>
+            </div>
+            <Button variant="outline" size="sm" @click="upscaleStore.fetchJobs()" class="gap-2">
+              <RefreshCw class="h-4 w-4" />
+              Refresh
+            </Button>
+          </CardHeader>
+          <CardContent>
+            <div v-if="!upscaleStore.jobs.length" class="text-center text-muted-foreground py-8">
+              No upscale jobs. Select a file and click "Upscale" to get started.
+            </div>
+            <!-- Job list table added in Plan 02 -->
+            <div v-else class="text-muted-foreground text-sm">
+              {{ upscaleStore.jobs.length }} jobs in queue
+            </div>
+          </CardContent>
+        </Card>
+      </TabsContent>
     </Tabs>
 
     <!-- Delete confirmation dialog -->
@@ -725,5 +784,45 @@ function hasUpscaled(item: DownloadItem): boolean {
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
+
+    <!-- Upscale preset picker dialog -->
+    <Dialog v-model:open="presetDialogOpen">
+      <DialogContent class="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Upscale Quality</DialogTitle>
+          <DialogDescription v-if="selectedFile">
+            Choose upscaling preset for {{ selectedFile.name }}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div class="space-y-3 py-4">
+          <label
+            v-for="preset in presets"
+            :key="preset.value"
+            class="flex items-start gap-3 rounded-lg border p-3 cursor-pointer transition-colors"
+            :class="{ 'border-primary bg-primary/5': selectedPreset === preset.value }"
+          >
+            <input
+              type="radio"
+              v-model="selectedPreset"
+              :value="preset.value"
+              class="mt-1"
+            />
+            <div>
+              <div class="font-medium">{{ preset.label }}</div>
+              <div class="text-sm text-muted-foreground">{{ preset.description }}</div>
+            </div>
+          </label>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" @click="presetDialogOpen = false">Cancel</Button>
+          <Button @click="submitUpscale" :disabled="!selectedPreset || submitting">
+            <Loader2 v-if="submitting" class="mr-2 h-4 w-4 animate-spin" />
+            Queue Upscale
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   </div>
 </template>
