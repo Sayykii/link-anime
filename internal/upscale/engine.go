@@ -72,12 +72,13 @@ func (e *Engine) buildCommand(ctx context.Context, job *models.UpscaleJob, useQS
 	// 2. hwupload: Upload to Vulkan GPU
 	// 3. libplacebo: Apply Anime4K shader and 2x upscale (frame_mixer=none skips unneeded temporal processing)
 	// 4. hwdownload: Download from Vulkan back to CPU
-	// 5. format=nv12: QSV prefers NV12, x265 works with both
-	vf := fmt.Sprintf("format=yuv420p,hwupload,libplacebo=w=iw*2:h=ih*2:custom_shader_path=%s:frame_mixer=none,hwdownload,format=nv12", shaderPath)
+	// 5. format=yuv420p: Receive frames from Vulkan (required format)
+	// 6. format=nv12: Convert to NV12 for QSV (x265 works with both)
+	vf := fmt.Sprintf("format=yuv420p,hwupload,libplacebo=w=iw*2:h=ih*2:custom_shader_path=%s:frame_mixer=none,hwdownload,format=yuv420p,format=nv12", shaderPath)
 
 	if useQSV {
-		// Add QSV hwupload for hardware encoding
-		vf += ",hwupload=extra_hw_frames=64"
+		// QSV encoder takes NV12 software frames directly (no hwupload needed)
+		// The encoder handles the upload to QSV hardware internally
 		args = append(args,
 			"-vf", vf,
 			"-c:v", "hevc_qsv",
