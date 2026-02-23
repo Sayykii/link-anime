@@ -2,6 +2,7 @@
 import { onMounted, ref, computed, watch } from 'vue'
 import { useApi } from '@/composables/useApi'
 import { useWebSocket } from '@/composables/useWebSocket'
+import { useUpscaleStore } from '@/stores/upscale'
 import { useRouter } from 'vue-router'
 import type { DownloadItem, TorrentStatus, NyaaResult, TorrentProgress } from '@/lib/types'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -58,11 +59,13 @@ import {
   MoreVertical,
   Trash2,
   X,
+  Sparkles,
 } from 'lucide-vue-next'
 
 const api = useApi()
 const router = useRouter()
 const { connected, connect, on } = useWebSocket()
+const upscaleStore = useUpscaleStore()
 const activeTab = ref('local')
 
 // Local downloads
@@ -92,6 +95,30 @@ const deleteDialogOpen = ref(false)
 const deleteTarget = ref<TorrentStatus | null>(null)
 const deleteWithFiles = ref(false)
 const deleting = ref(false)
+
+// Upscale dialog state
+const presetDialogOpen = ref(false)
+const selectedFile = ref<DownloadItem | null>(null)
+const selectedPreset = ref('balanced')
+const submitting = ref(false)
+
+// Preset options
+const presets = [
+  { value: 'fast', label: 'Fast', description: 'Quick upscale with basic enhancement. Good for batch processing.' },
+  { value: 'balanced', label: 'Balanced', description: 'Best quality/speed tradeoff. Recommended for most content.' },
+  { value: 'quality', label: 'Quality', description: 'Maximum quality, slower processing. For your favorites.' },
+]
+
+// Computed for 4K badge - tracks completed upscale paths
+const completedUpscalePaths = computed(() => {
+  const paths = new Set<string>()
+  for (const job of upscaleStore.jobs) {
+    if (job.status === 'completed') {
+      paths.add(job.inputPath)
+    }
+  }
+  return paths
+})
 
 // === Filtering logic ===
 function normalize(s: string): string {
@@ -149,6 +176,11 @@ onMounted(() => {
     // Refresh local files when a download completes
     loadDownloads()
   })
+
+  // Initialize upscale store
+  upscaleStore.probe()
+  upscaleStore.fetchJobs()
+  upscaleStore.setupListeners()
 })
 
 // When switching to torrents tab, do an initial API fetch if no WS data yet
@@ -290,6 +322,32 @@ function torrentStateVariant(state: string): 'default' | 'secondary' | 'outline'
   if (state === 'error') return 'destructive'
   if (state.includes('UP') || state === 'uploading') return 'secondary'
   return 'outline'
+}
+
+// === Upscale functions ===
+function openUpscaleDialog(item: DownloadItem) {
+  selectedFile.value = item
+  selectedPreset.value = 'balanced'
+  presetDialogOpen.value = true
+}
+
+async function submitUpscale() {
+  if (!selectedFile.value || !selectedPreset.value) return
+  submitting.value = true
+  try {
+    await upscaleStore.createJob(selectedFile.value.path, selectedPreset.value)
+    toast.success('Job queued', { description: selectedFile.value.name })
+    presetDialogOpen.value = false
+    activeTab.value = 'upscale'
+  } catch (e: unknown) {
+    toast.error(e instanceof Error ? e.message : 'Failed to queue upscale')
+  } finally {
+    submitting.value = false
+  }
+}
+
+function hasUpscaled(item: DownloadItem): boolean {
+  return completedUpscalePaths.value.has(item.path)
 }
 </script>
 
