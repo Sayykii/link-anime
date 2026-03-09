@@ -84,17 +84,6 @@ func migrate() error {
 			matched  DATETIME DEFAULT CURRENT_TIMESTAMP,
 			status   TEXT DEFAULT 'downloaded'
 		)`,
-		`CREATE TABLE IF NOT EXISTS upscale_jobs (
-			id           INTEGER PRIMARY KEY AUTOINCREMENT,
-			input_path   TEXT NOT NULL,
-			output_path  TEXT NOT NULL,
-			preset       TEXT NOT NULL DEFAULT 'balanced',
-			status       TEXT NOT NULL DEFAULT 'pending',
-			error        TEXT,
-			created_at   DATETIME DEFAULT CURRENT_TIMESTAMP,
-			started_at   DATETIME,
-			completed_at DATETIME
-		)`,
 	}
 
 	for _, m := range migrations {
