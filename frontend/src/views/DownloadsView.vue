@@ -3,6 +3,7 @@ import { onMounted, ref, computed, watch } from 'vue'
 import { useApi } from '@/composables/useApi'
 import { useWebSocket } from '@/composables/useWebSocket'
 import { useRouter } from 'vue-router'
+import { formatSize } from '@/lib/utils'
 import type { DownloadItem, TorrentStatus, NyaaResult, TorrentProgress } from '@/lib/types'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -59,7 +60,9 @@ import {
   MoreVertical,
   Trash2,
   X,
+  ArrowUpDown,
 } from 'lucide-vue-next'
+import EmptyState from '@/components/EmptyState.vue'
 
 const api = useApi()
 const router = useRouter()
@@ -88,6 +91,11 @@ const addingMagnet = ref(false)
 // Search/filter across all tabs
 const searchQuery = ref('')
 
+// Sort and filter state
+const localSort = ref('name-asc')
+const localTypeFilter = ref('all') // 'all' | 'folders' | 'files'
+const torrentSort = ref('name')
+
 // Torrent delete state
 const deleteDialogOpen = ref(false)
 const deleteTarget = ref<TorrentStatus | null>(null)
@@ -107,13 +115,38 @@ function matchesFilter(candidate: string, query: string): boolean {
 }
 
 const filteredDownloads = computed(() => {
-  if (!searchQuery.value) return downloads.value
-  return downloads.value.filter(d => matchesFilter(d.name, searchQuery.value))
+  let items = downloads.value
+  if (searchQuery.value) {
+    items = items.filter(d => matchesFilter(d.name, searchQuery.value))
+  }
+  if (localTypeFilter.value === 'folders') items = items.filter(d => d.isDir)
+  else if (localTypeFilter.value === 'files') items = items.filter(d => !d.isDir)
+
+  const sorted = [...items]
+  switch (localSort.value) {
+    case 'name-asc': sorted.sort((a, b) => a.name.localeCompare(b.name)); break
+    case 'name-desc': sorted.sort((a, b) => b.name.localeCompare(a.name)); break
+    case 'size-desc': sorted.sort((a, b) => b.size - a.size); break
+    case 'size-asc': sorted.sort((a, b) => a.size - b.size); break
+    case 'videos-desc': sorted.sort((a, b) => b.videoCount - a.videoCount); break
+    case 'videos-asc': sorted.sort((a, b) => a.videoCount - b.videoCount); break
+  }
+  return sorted
 })
 
 const filteredTorrents = computed(() => {
-  if (!searchQuery.value) return torrents.value
-  return torrents.value.filter(t => matchesFilter(t.name, searchQuery.value))
+  let items = torrents.value
+  if (searchQuery.value) {
+    items = items.filter(t => matchesFilter(t.name, searchQuery.value))
+  }
+  const sorted = [...items]
+  switch (torrentSort.value) {
+    case 'name': sorted.sort((a, b) => a.name.localeCompare(b.name)); break
+    case 'progress': sorted.sort((a, b) => b.progress - a.progress); break
+    case 'size': sorted.sort((a, b) => b.size - a.size); break
+    case 'speed': sorted.sort((a, b) => b.dlSpeed - a.dlSpeed); break
+  }
+  return sorted
 })
 
 const filteredNyaaResults = computed(() => {
@@ -250,12 +283,6 @@ function goToLink(name: string) {
   router.push({ path: '/link', query: { source: name } })
 }
 
-function formatSize(bytes: number): string {
-  if (bytes >= 1073741824) return (bytes / 1073741824).toFixed(2) + ' GB'
-  if (bytes >= 1048576) return (bytes / 1048576).toFixed(1) + ' MB'
-  return (bytes / 1024).toFixed(1) + ' KB'
-}
-
 function formatSpeed(bytes: number): string {
   if (bytes >= 1048576) return (bytes / 1048576).toFixed(1) + ' MB/s'
   if (bytes >= 1024) return (bytes / 1024).toFixed(1) + ' KB/s'
@@ -304,49 +331,96 @@ function torrentStateVariant(state: string): 'default' | 'secondary' | 'outline'
     </div>
 
     <Tabs v-model="activeTab">
-      <div class="flex flex-col sm:flex-row sm:items-center gap-3">
-        <TabsList>
-          <TabsTrigger value="local" class="gap-2">
-            <HardDrive class="h-4 w-4" />
-            <span class="hidden sm:inline">Local Files</span>
-            <span class="sm:hidden">Local</span>
-          </TabsTrigger>
-          <TabsTrigger value="torrents" class="gap-2">
-            <Download class="h-4 w-4" />
-            Torrents
-            <span
-              v-if="wsActive"
-              class="ml-1 h-2 w-2 rounded-full bg-green-500 animate-pulse"
-              title="Live updates active"
-            ></span>
-          </TabsTrigger>
-          <TabsTrigger value="nyaa" class="gap-2">
-            <Search class="h-4 w-4" />
-            Nyaa
-          </TabsTrigger>
-        </TabsList>
+      <div class="sticky-filter flex flex-col gap-3">
+        <div class="flex flex-col sm:flex-row sm:items-center gap-3">
+          <TabsList>
+            <TabsTrigger value="local" class="gap-2">
+              <HardDrive class="h-4 w-4" />
+              <span class="hidden sm:inline">Local Files</span>
+              <span class="sm:hidden">Local</span>
+            </TabsTrigger>
+            <TabsTrigger value="torrents" class="gap-2">
+              <Download class="h-4 w-4" />
+              Torrents
+              <span
+                v-if="wsActive"
+                class="ml-1 h-2 w-2 rounded-full bg-green-500 animate-pulse"
+                title="Live updates active"
+              ></span>
+            </TabsTrigger>
+            <TabsTrigger value="nyaa" class="gap-2">
+              <Search class="h-4 w-4" />
+              Nyaa
+            </TabsTrigger>
+          </TabsList>
 
-        <!-- Global filter input -->
-        <div class="relative flex-1 max-w-sm">
-          <Search class="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            v-model="searchQuery"
-            placeholder="Filter results..."
-            class="pl-9 h-9"
-          />
-          <button
-            v-if="searchQuery"
-            class="absolute right-2.5 top-2.5 text-muted-foreground hover:text-foreground"
-            @click="searchQuery = ''"
-          >
-            <X class="h-4 w-4" />
-          </button>
+          <!-- Global filter input -->
+          <div class="relative flex-1 max-w-sm">
+            <Search class="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              v-model="searchQuery"
+              placeholder="Filter results..."
+              class="pl-9 h-9"
+            />
+            <button
+              v-if="searchQuery"
+              class="absolute right-2.5 top-2.5 text-muted-foreground hover:text-foreground"
+              @click="searchQuery = ''"
+            >
+              <X class="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+
+        <!-- Tab-specific sort/filter controls -->
+        <div v-if="activeTab === 'local'" class="flex items-center gap-2">
+          <div class="flex rounded-md border">
+            <Button
+              v-for="opt in [{ value: 'all', label: 'All' }, { value: 'folders', label: 'Folders' }, { value: 'files', label: 'Files' }]"
+              :key="opt.value"
+              :variant="localTypeFilter === opt.value ? 'default' : 'ghost'"
+              size="sm"
+              class="rounded-none first:rounded-l-md last:rounded-r-md h-8 px-3 text-xs"
+              @click="localTypeFilter = opt.value"
+            >
+              {{ opt.label }}
+            </Button>
+          </div>
+          <Select v-model="localSort">
+            <SelectTrigger class="w-40 h-8 text-xs">
+              <ArrowUpDown class="h-3 w-3 mr-1 text-muted-foreground" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="name-asc">Name A-Z</SelectItem>
+              <SelectItem value="name-desc">Name Z-A</SelectItem>
+              <SelectItem value="size-desc">Size (largest)</SelectItem>
+              <SelectItem value="size-asc">Size (smallest)</SelectItem>
+              <SelectItem value="videos-desc">Videos (most)</SelectItem>
+              <SelectItem value="videos-asc">Videos (fewest)</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div v-if="activeTab === 'torrents'" class="flex items-center gap-2">
+          <Select v-model="torrentSort">
+            <SelectTrigger class="w-40 h-8 text-xs">
+              <ArrowUpDown class="h-3 w-3 mr-1 text-muted-foreground" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="name">Name</SelectItem>
+              <SelectItem value="progress">Progress</SelectItem>
+              <SelectItem value="size">Size</SelectItem>
+              <SelectItem value="speed">Speed</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
       <!-- Local downloads -->
       <TabsContent value="local">
-        <Card>
+        <Card glass>
           <CardHeader class="flex flex-row items-center justify-between">
             <div>
               <CardTitle>Downloaded Files</CardTitle>
@@ -361,12 +435,20 @@ function torrentStateVariant(state: string): 'default' | 'secondary' | 'outline'
             <div v-if="loadingDownloads" class="flex items-center gap-2 text-muted-foreground py-8 justify-center">
               <Loader2 class="h-4 w-4 animate-spin" />
             </div>
-            <div v-else-if="!downloads.length" class="text-center text-muted-foreground py-8">
-              No downloads found
-            </div>
-            <div v-else-if="!filteredDownloads.length" class="text-center text-muted-foreground py-8">
-              No matches for "{{ searchQuery }}"
-            </div>
+            <EmptyState
+              v-else-if="!downloads.length"
+              :icon="FolderOpen"
+              heading="Download directory is empty"
+              description="Files you download will appear here for linking"
+            />
+            <EmptyState
+              v-else-if="!filteredDownloads.length"
+              :icon="Search"
+              :heading="`No results for &quot;${searchQuery}&quot;`"
+              action-label="Clear filter"
+              action-variant="outline"
+              @action="searchQuery = ''"
+            />
             <div v-else class="space-y-2">
               <div
                 v-for="item in filteredDownloads"
@@ -394,7 +476,7 @@ function torrentStateVariant(state: string): 'default' | 'secondary' | 'outline'
 
       <!-- Torrents (live updates via WebSocket) -->
       <TabsContent value="torrents">
-        <Card>
+        <Card glass>
           <CardHeader class="flex flex-row items-center justify-between">
             <div>
               <CardTitle class="flex items-center gap-2">
@@ -487,13 +569,26 @@ function torrentStateVariant(state: string): 'default' | 'secondary' | 'outline'
                     </TableCell>
                   </TableRow>
                   <TableRow v-if="!filteredTorrents.length && !loadingTorrents && !searchQuery">
-                    <TableCell colspan="7" class="text-center text-muted-foreground py-8">
-                      No torrents found. Is qBittorrent configured?
+                    <TableCell colspan="7">
+                      <EmptyState
+                        :icon="Download"
+                        heading="No active torrents"
+                        description="Add a magnet link above or search Nyaa"
+                        action-label="Search Nyaa"
+                        action-variant="outline"
+                        @action="activeTab = 'nyaa'"
+                      />
                     </TableCell>
                   </TableRow>
                   <TableRow v-if="!filteredTorrents.length && searchQuery && torrents.length">
-                    <TableCell colspan="7" class="text-center text-muted-foreground py-8">
-                      No matches for "{{ searchQuery }}"
+                    <TableCell colspan="7">
+                      <EmptyState
+                        :icon="Search"
+                        :heading="`No results for &quot;${searchQuery}&quot;`"
+                        action-label="Clear filter"
+                        action-variant="outline"
+                        @action="searchQuery = ''"
+                      />
                     </TableCell>
                   </TableRow>
                 </TableBody>
@@ -541,12 +636,23 @@ function torrentStateVariant(state: string): 'default' | 'secondary' | 'outline'
                   <span v-if="t.eta > 0 && t.eta < 8640000">ETA {{ formatEta(t.eta) }}</span>
                 </div>
               </div>
-              <div v-if="!filteredTorrents.length && !loadingTorrents && !searchQuery" class="text-center text-muted-foreground py-8">
-                No torrents found. Is qBittorrent configured?
-              </div>
-              <div v-if="!filteredTorrents.length && searchQuery && torrents.length" class="text-center text-muted-foreground py-8">
-                No matches for "{{ searchQuery }}"
-              </div>
+              <EmptyState
+                v-if="!filteredTorrents.length && !loadingTorrents && !searchQuery"
+                :icon="Download"
+                heading="No active torrents"
+                description="Add a magnet link above or search Nyaa"
+                action-label="Search Nyaa"
+                action-variant="outline"
+                @action="activeTab = 'nyaa'"
+              />
+              <EmptyState
+                v-if="!filteredTorrents.length && searchQuery && torrents.length"
+                :icon="Search"
+                :heading="`No results for &quot;${searchQuery}&quot;`"
+                action-label="Clear filter"
+                action-variant="outline"
+                @action="searchQuery = ''"
+              />
             </div>
           </CardContent>
         </Card>
@@ -554,7 +660,7 @@ function torrentStateVariant(state: string): 'default' | 'secondary' | 'outline'
 
       <!-- Nyaa search -->
       <TabsContent value="nyaa">
-        <Card>
+        <Card glass>
           <CardHeader>
             <CardTitle>Search Nyaa</CardTitle>
             <CardDescription>Find anime torrents on Nyaa.si</CardDescription>
@@ -631,9 +737,26 @@ function torrentStateVariant(state: string): 'default' | 'secondary' | 'outline'
               </div>
             </div>
 
-            <div v-if="nyaaResults.length && !filteredNyaaResults.length && searchQuery" class="text-center text-muted-foreground py-8">
-              No matches for "{{ searchQuery }}"
-            </div>
+            <EmptyState
+              v-if="!nyaaResults.length && !searchingNyaa && nyaaQuery"
+              :icon="Search"
+              heading="No results found"
+              description="Try different search terms or filters"
+            />
+            <EmptyState
+              v-if="!nyaaResults.length && !searchingNyaa && !nyaaQuery"
+              :icon="Search"
+              heading="Search for anime"
+              description="Enter a search query above to find torrents on Nyaa"
+            />
+            <EmptyState
+              v-if="nyaaResults.length && !filteredNyaaResults.length && searchQuery"
+              :icon="Search"
+              :heading="`No results for &quot;${searchQuery}&quot;`"
+              action-label="Clear filter"
+              action-variant="outline"
+              @action="searchQuery = ''"
+            />
           </CardContent>
         </Card>
       </TabsContent>

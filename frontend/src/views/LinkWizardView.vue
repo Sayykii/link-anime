@@ -1,8 +1,9 @@
-<script setup lang="ts">
+    <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useApi } from '@/composables/useApi'
 import { useWebSocket } from '@/composables/useWebSocket'
 import { useLibraryStore } from '@/stores/library'
+import { formatSize } from '@/lib/utils'
 import { useRoute, useRouter } from 'vue-router'
 import type { DownloadItem, LinkResult, LinkProgress, Show } from '@/lib/types'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -185,11 +186,7 @@ function reset() {
   loadDownloads()
 }
 
-function formatSize(bytes: number): string {
-  if (bytes >= 1073741824) return (bytes / 1073741824).toFixed(2) + ' GB'
-  if (bytes >= 1048576) return (bytes / 1048576).toFixed(1) + ' MB'
-  return (bytes / 1024).toFixed(1) + ' KB'
-}
+
 </script>
 
 <template>
@@ -211,7 +208,7 @@ function formatSize(bytes: number): string {
     </div>
 
     <!-- Step 1: Select source -->
-    <Card v-if="step === 1">
+    <Card v-if="step === 1" glass>
       <CardHeader>
         <CardTitle>Select Source</CardTitle>
         <CardDescription>Choose a download to link into your library</CardDescription>
@@ -246,7 +243,7 @@ function formatSize(bytes: number): string {
     </Card>
 
     <!-- Step 2: Select type -->
-    <Card v-if="step === 2">
+    <Card v-if="step === 2" glass>
       <CardHeader>
         <CardTitle>Select Type</CardTitle>
         <CardDescription>
@@ -277,7 +274,7 @@ function formatSize(bytes: number): string {
     </Card>
 
     <!-- Step 3: Details -->
-    <Card v-if="step === 3">
+    <Card v-if="step === 3" glass>
       <CardHeader>
         <CardTitle>{{ mediaType === 'series' ? 'Series' : 'Movie' }} Details</CardTitle>
         <CardDescription>
@@ -333,7 +330,7 @@ function formatSize(bytes: number): string {
     </Card>
 
     <!-- Step 4: Confirm -->
-    <Card v-if="step === 4">
+    <Card v-if="step === 4" glass>
       <CardHeader>
         <CardTitle>Confirm Link</CardTitle>
         <CardDescription>Review before linking</CardDescription>
@@ -383,7 +380,7 @@ function formatSize(bytes: number): string {
     </Card>
 
     <!-- Step 5: Progress -->
-    <Card v-if="step === 5">
+    <Card v-if="step === 5" glass>
       <CardHeader>
         <CardTitle class="flex items-center gap-2">
           <Loader2 class="h-5 w-5 animate-spin" />
@@ -407,7 +404,7 @@ function formatSize(bytes: number): string {
     </Card>
 
     <!-- Step 6: Done -->
-    <Card v-if="step === 6">
+    <Card v-if="step === 6" glass>
       <CardHeader>
         <CardTitle class="flex items-center gap-2 text-green-600">
           <Check class="h-5 w-5" />

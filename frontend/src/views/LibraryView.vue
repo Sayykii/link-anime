@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { useLibraryStore } from '@/stores/library'
 import { useApi } from '@/composables/useApi'
 import type { UnlinkPreview } from '@/lib/types'
@@ -7,6 +8,13 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import {
   Table,
   TableBody,
@@ -26,13 +34,16 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { Search, RefreshCw, Tv, Film, Trash2, Loader2, AlertTriangle } from 'lucide-vue-next'
+import { Search, RefreshCw, Tv, Film, Trash2, Loader2, AlertTriangle, X, ArrowUpDown } from 'lucide-vue-next'
+import EmptyState from '@/components/EmptyState.vue'
 import { toast } from 'vue-sonner'
 
 const api = useApi()
+const router = useRouter()
 const library = useLibraryStore()
 const searchQuery = ref('')
 const activeTab = ref('shows')
+const sortBy = ref('name-asc')
 
 // Unlink state
 const unlinkDialogOpen = ref(false)
@@ -46,16 +57,35 @@ onMounted(() => {
   library.fetchMovies()
 })
 
+function sortItems<T extends { name: string }>(items: T[], sort: string, getEpisodes?: (i: T) => number, getSeasons?: (i: T) => number): T[] {
+  const sorted = [...items]
+  switch (sort) {
+    case 'name-asc': sorted.sort((a, b) => a.name.localeCompare(b.name)); break
+    case 'name-desc': sorted.sort((a, b) => b.name.localeCompare(a.name)); break
+    case 'episodes-desc': if (getEpisodes) sorted.sort((a, b) => getEpisodes(b) - getEpisodes(a)); break
+    case 'episodes-asc': if (getEpisodes) sorted.sort((a, b) => getEpisodes(a) - getEpisodes(b)); break
+    case 'seasons-desc': if (getSeasons) sorted.sort((a, b) => getSeasons(b) - getSeasons(a)); break
+    case 'seasons-asc': if (getSeasons) sorted.sort((a, b) => getSeasons(a) - getSeasons(b)); break
+  }
+  return sorted
+}
+
 const filteredShows = computed(() => {
-  if (!searchQuery.value) return library.shows
-  const q = searchQuery.value.toLowerCase()
-  return library.shows.filter(s => s.name.toLowerCase().includes(q))
+  let items = library.shows
+  if (searchQuery.value) {
+    const q = searchQuery.value.toLowerCase()
+    items = items.filter(s => s.name.toLowerCase().includes(q))
+  }
+  return sortItems(items, sortBy.value, s => s.episodes, s => s.seasons.length)
 })
 
 const filteredMovies = computed(() => {
-  if (!searchQuery.value) return library.movies
-  const q = searchQuery.value.toLowerCase()
-  return library.movies.filter(m => m.name.toLowerCase().includes(q))
+  let items = library.movies
+  if (searchQuery.value) {
+    const q = searchQuery.value.toLowerCase()
+    items = items.filter(m => m.name.toLowerCase().includes(q))
+  }
+  return sortItems(items, sortBy.value)
 })
 
 function refresh() {
@@ -125,10 +155,33 @@ async function executeUnlink(force: boolean) {
       </Button>
     </div>
 
-    <!-- Search -->
-    <div class="relative max-w-sm">
-      <Search class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-      <Input v-model="searchQuery" placeholder="Search library..." class="pl-9" />
+    <!-- Filter bar -->
+    <div class="sticky-filter flex flex-col sm:flex-row sm:items-center gap-3">
+      <div class="relative flex-1 max-w-sm">
+        <Search class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input v-model="searchQuery" placeholder="Search library..." class="pl-9 h-9" />
+        <button
+          v-if="searchQuery"
+          class="absolute right-2.5 top-2.5 text-muted-foreground hover:text-foreground"
+          @click="searchQuery = ''"
+        >
+          <X class="h-4 w-4" />
+        </button>
+      </div>
+      <Select v-model="sortBy">
+        <SelectTrigger class="w-44 h-9">
+          <ArrowUpDown class="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
+          <SelectValue placeholder="Sort by..." />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="name-asc">Name A-Z</SelectItem>
+          <SelectItem value="name-desc">Name Z-A</SelectItem>
+          <SelectItem value="episodes-desc">Episodes (most)</SelectItem>
+          <SelectItem value="episodes-asc">Episodes (fewest)</SelectItem>
+          <SelectItem value="seasons-desc">Seasons (most)</SelectItem>
+          <SelectItem value="seasons-asc">Seasons (fewest)</SelectItem>
+        </SelectContent>
+      </Select>
     </div>
 
     <Tabs v-model="activeTab">
@@ -144,7 +197,7 @@ async function executeUnlink(force: boolean) {
       </TabsList>
 
       <TabsContent value="shows">
-        <Card>
+        <Card glass>
           <CardContent class="p-0">
             <Table>
               <TableHeader>
@@ -186,9 +239,26 @@ async function executeUnlink(force: boolean) {
                     </Button>
                   </TableCell>
                 </TableRow>
-                <TableRow v-if="!filteredShows.length">
-                  <TableCell colspan="4" class="text-center text-muted-foreground py-8">
-                    {{ searchQuery ? 'No shows match your search' : 'No shows in library' }}
+                <TableRow v-if="!filteredShows.length && searchQuery">
+                  <TableCell colspan="4">
+                    <EmptyState
+                      :icon="Search"
+                      :heading="`No results for &quot;${searchQuery}&quot;`"
+                      action-label="Clear filter"
+                      action-variant="outline"
+                      @action="searchQuery = ''"
+                    />
+                  </TableCell>
+                </TableRow>
+                <TableRow v-if="!filteredShows.length && !searchQuery">
+                  <TableCell colspan="4">
+                    <EmptyState
+                      :icon="Tv"
+                      heading="No shows yet"
+                      description="Link anime from your downloads to start building your library"
+                      action-label="Link New Content"
+                      @action="router.push('/link')"
+                    />
                   </TableCell>
                 </TableRow>
               </TableBody>
@@ -198,7 +268,7 @@ async function executeUnlink(force: boolean) {
       </TabsContent>
 
       <TabsContent value="movies">
-        <Card>
+        <Card glass>
           <CardContent class="p-0">
             <Table>
               <TableHeader>
@@ -224,9 +294,26 @@ async function executeUnlink(force: boolean) {
                     </Button>
                   </TableCell>
                 </TableRow>
-                <TableRow v-if="!filteredMovies.length">
-                  <TableCell colspan="3" class="text-center text-muted-foreground py-8">
-                    {{ searchQuery ? 'No movies match your search' : 'No movies in library' }}
+                <TableRow v-if="!filteredMovies.length && searchQuery">
+                  <TableCell colspan="3">
+                    <EmptyState
+                      :icon="Search"
+                      :heading="`No results for &quot;${searchQuery}&quot;`"
+                      action-label="Clear filter"
+                      action-variant="outline"
+                      @action="searchQuery = ''"
+                    />
+                  </TableCell>
+                </TableRow>
+                <TableRow v-if="!filteredMovies.length && !searchQuery">
+                  <TableCell colspan="3">
+                    <EmptyState
+                      :icon="Film"
+                      heading="No movies yet"
+                      description="Link anime movies from your downloads to build your collection"
+                      action-label="Link New Content"
+                      @action="router.push('/link')"
+                    />
                   </TableCell>
                 </TableRow>
               </TableBody>

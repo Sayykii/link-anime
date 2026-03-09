@@ -110,7 +110,7 @@ async function changePassword() {
 
     <template v-else>
       <!-- Paths -->
-      <Card>
+      <Card glass>
         <CardHeader>
           <CardTitle>Paths</CardTitle>
           <CardDescription>Directories for downloads and media library</CardDescription>
@@ -132,7 +132,7 @@ async function changePassword() {
       </Card>
 
       <!-- qBittorrent -->
-      <Card>
+      <Card glass>
         <CardHeader>
           <CardTitle>qBittorrent</CardTitle>
           <CardDescription>Connect to qBittorrent for download management</CardDescription>
@@ -165,7 +165,7 @@ async function changePassword() {
       </Card>
 
       <!-- Shoko -->
-      <Card>
+      <Card glass>
         <CardHeader>
           <CardTitle>Shoko Server</CardTitle>
           <CardDescription>Trigger import scans after linking</CardDescription>
@@ -188,7 +188,7 @@ async function changePassword() {
       </Card>
 
       <!-- Notifications -->
-      <Card>
+      <Card glass>
         <CardHeader>
           <CardTitle>Notifications</CardTitle>
           <CardDescription>Receive notifications when content is linked (Discord, ntfy, or generic webhook)</CardDescription>
@@ -210,7 +210,7 @@ async function changePassword() {
       <Separator />
 
       <!-- Change Password -->
-      <Card>
+      <Card glass>
         <CardHeader>
           <CardTitle class="flex items-center gap-2">
             <KeyRound class="h-5 w-5" />

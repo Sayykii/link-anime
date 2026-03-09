@@ -39,6 +39,8 @@ import {
   PowerOff,
   Loader2,
   Eraser,
+  Search,
+  X,
 } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
 
@@ -76,9 +78,28 @@ const form = ref({
   enabled: true,
 })
 
+// Search and date filter for matches
+const matchSearch = ref('')
+const matchDateFilter = ref('all') // 'all' | '24h' | '7d' | '30d'
+
 const filteredMatches = computed(() => {
-  if (!filterRuleId.value) return matches.value
-  return matches.value.filter(m => m.ruleId === filterRuleId.value)
+  let items = matches.value
+  if (filterRuleId.value) {
+    items = items.filter(m => m.ruleId === filterRuleId.value)
+  }
+  if (matchSearch.value) {
+    const q = matchSearch.value.toLowerCase()
+    items = items.filter(m => m.title.toLowerCase().includes(q))
+  }
+  if (matchDateFilter.value !== 'all') {
+    const now = Date.now()
+    const cutoffs: Record<string, number> = { '24h': 86400000, '7d': 604800000, '30d': 2592000000 }
+    const cutoff = cutoffs[matchDateFilter.value]
+    if (cutoff) {
+      items = items.filter(m => m.matched && now - new Date(m.matched).getTime() < cutoff)
+    }
+  }
+  return items
 })
 
 onMounted(async () => {
@@ -273,8 +294,8 @@ function statusColor(status: string) {
         </div>
 
         <div v-else-if="rules.length === 0" class="text-center py-12 text-muted-foreground">
-          <Rss class="h-12 w-12 mx-auto mb-4 opacity-40" />
-          <p class="text-lg">No RSS rules yet</p>
+          <Rss class="h-12 w-12 mx-auto mb-4 opacity-40 animate-float" />
+          <p class="font-medium text-foreground">No RSS rules yet</p>
           <p class="text-sm mt-1">Create a rule to auto-download new episodes from Nyaa</p>
           <Button class="mt-4" @click="openCreateDialog">
             <Plus class="mr-2 h-4 w-4" />
@@ -283,7 +304,7 @@ function statusColor(status: string) {
         </div>
 
         <div v-else class="grid gap-4">
-          <Card v-for="rule in rules" :key="rule.id" :class="{ 'opacity-50': !rule.enabled }">
+          <Card v-for="rule in rules" :key="rule.id" glass :class="{ 'opacity-50': !rule.enabled }">
             <CardHeader class="pb-3">
               <div class="flex items-center justify-between">
                 <div class="flex items-center gap-3">
@@ -345,11 +366,21 @@ function statusColor(status: string) {
 
       <!-- Matches Tab -->
       <TabsContent value="matches" class="space-y-4">
-        <!-- Filter by rule -->
-        <div class="flex items-center gap-4">
-          <Label>Filter by rule:</Label>
+        <!-- Filter bar -->
+        <div class="sticky-filter flex flex-col sm:flex-row sm:items-center gap-3">
+          <div class="relative flex-1 max-w-sm">
+            <Search class="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input v-model="matchSearch" placeholder="Search matches..." class="pl-9 h-9" />
+            <button
+              v-if="matchSearch"
+              class="absolute right-2.5 top-2.5 text-muted-foreground hover:text-foreground"
+              @click="matchSearch = ''"
+            >
+              <X class="h-4 w-4" />
+            </button>
+          </div>
           <Select v-model="filterRuleId as any">
-            <SelectTrigger class="w-64">
+            <SelectTrigger class="w-48 h-9">
               <SelectValue placeholder="All rules" />
             </SelectTrigger>
             <SelectContent>
@@ -359,8 +390,20 @@ function statusColor(status: string) {
               </SelectItem>
             </SelectContent>
           </Select>
-          <Button v-if="filterRuleId" variant="outline" size="sm" @click="filterRuleId = null">
-            Clear filter
+          <div class="flex rounded-md border">
+            <Button
+              v-for="opt in [{ value: 'all', label: 'All' }, { value: '24h', label: '24h' }, { value: '7d', label: '7 days' }, { value: '30d', label: '30 days' }]"
+              :key="opt.value"
+              :variant="matchDateFilter === opt.value ? 'default' : 'ghost'"
+              size="sm"
+              class="rounded-none first:rounded-l-md last:rounded-r-md h-8 px-3 text-xs"
+              @click="matchDateFilter = opt.value"
+            >
+              {{ opt.label }}
+            </Button>
+          </div>
+          <Button v-if="filterRuleId || matchSearch || matchDateFilter !== 'all'" variant="outline" size="sm" @click="filterRuleId = null; matchSearch = ''; matchDateFilter = 'all'">
+            Clear filters
           </Button>
         </div>
 
@@ -369,7 +412,8 @@ function statusColor(status: string) {
         </div>
 
         <div v-else-if="filteredMatches.length === 0" class="text-center py-12 text-muted-foreground">
-          <p class="text-lg">No matches yet</p>
+          <Rss class="h-12 w-12 mx-auto mb-4 opacity-40 animate-float" />
+          <p class="font-medium text-foreground">No matches yet</p>
           <p class="text-sm mt-1">Matches appear when RSS polls find new torrents matching your rules</p>
         </div>
 

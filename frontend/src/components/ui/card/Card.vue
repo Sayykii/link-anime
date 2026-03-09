@@ -2,9 +2,12 @@
 import type { HTMLAttributes } from "vue"
 import { cn } from "@/lib/utils"
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   class?: HTMLAttributes["class"]
-}>()
+  glass?: boolean
+}>(), {
+  glass: false,
+})
 </script>
 
 <template>
@@ -13,6 +16,7 @@ const props = defineProps<{
     :class="
       cn(
         'bg-card text-card-foreground flex flex-col gap-6 rounded-xl border py-6 shadow-sm',
+        glass && 'glass card-hover',
         props.class,
       )
     "

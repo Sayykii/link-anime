@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { onMounted, ref, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { useApi } from '@/composables/useApi'
+import { formatSize } from '@/lib/utils'
 import type { HistoryEntry, UnlinkPreview } from '@/lib/types'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import {
   Table,
@@ -24,11 +27,34 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { toast } from 'vue-sonner'
-import { Undo2, RefreshCw, Clock, Loader2, AlertTriangle } from 'lucide-vue-next'
+import { Undo2, RefreshCw, Clock, Loader2, AlertTriangle, Search, X, History as HistoryIcon } from 'lucide-vue-next'
+import EmptyState from '@/components/EmptyState.vue'
 
 const api = useApi()
+const router = useRouter()
 const history = ref<HistoryEntry[]>([])
 const loading = ref(false)
+const searchQuery = ref('')
+const typeFilter = ref('all') // 'all' | 'series' | 'movie'
+const sortOrder = ref('newest') // 'newest' | 'oldest'
+
+const filteredHistory = computed(() => {
+  let items = history.value
+  if (searchQuery.value) {
+    const q = searchQuery.value.toLowerCase()
+    items = items.filter(e => e.showName.toLowerCase().includes(q) || e.source.toLowerCase().includes(q))
+  }
+  if (typeFilter.value !== 'all') {
+    items = items.filter(e => e.mediaType === typeFilter.value)
+  }
+  const sorted = [...items]
+  if (sortOrder.value === 'oldest') {
+    sorted.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+  } else {
+    sorted.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+  }
+  return sorted
+})
 
 // Undo safety state
 const undoDialogOpen = ref(false)
@@ -104,11 +130,7 @@ function formatDate(ts: string): string {
   return new Date(ts).toLocaleString()
 }
 
-function formatSize(bytes: number): string {
-  if (bytes >= 1073741824) return (bytes / 1073741824).toFixed(2) + ' GB'
-  if (bytes >= 1048576) return (bytes / 1048576).toFixed(1) + ' MB'
-  return (bytes / 1024).toFixed(1) + ' KB'
-}
+
 </script>
 
 <template>
@@ -219,7 +241,46 @@ function formatSize(bytes: number): string {
       </AlertDialogContent>
     </AlertDialog>
 
-    <Card>
+    <!-- Filter bar -->
+    <div class="sticky-filter flex flex-col sm:flex-row sm:items-center gap-3">
+      <div class="relative flex-1 max-w-sm">
+        <Search class="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+        <Input v-model="searchQuery" placeholder="Search history..." class="pl-9 h-9" />
+        <button
+          v-if="searchQuery"
+          class="absolute right-2.5 top-2.5 text-muted-foreground hover:text-foreground"
+          @click="searchQuery = ''"
+        >
+          <X class="h-4 w-4" />
+        </button>
+      </div>
+      <div class="flex rounded-md border">
+        <Button
+          v-for="opt in [{ value: 'all', label: 'All' }, { value: 'series', label: 'Shows' }, { value: 'movie', label: 'Movies' }]"
+          :key="opt.value"
+          :variant="typeFilter === opt.value ? 'default' : 'ghost'"
+          size="sm"
+          class="rounded-none first:rounded-l-md last:rounded-r-md h-8 px-3 text-xs"
+          @click="typeFilter = opt.value"
+        >
+          {{ opt.label }}
+        </Button>
+      </div>
+      <div class="flex rounded-md border">
+        <Button
+          v-for="opt in [{ value: 'newest', label: 'Newest' }, { value: 'oldest', label: 'Oldest' }]"
+          :key="opt.value"
+          :variant="sortOrder === opt.value ? 'default' : 'ghost'"
+          size="sm"
+          class="rounded-none first:rounded-l-md last:rounded-r-md h-8 px-3 text-xs"
+          @click="sortOrder = opt.value"
+        >
+          {{ opt.label }}
+        </Button>
+      </div>
+    </div>
+
+    <Card glass>
       <CardContent class="p-0">
         <Table>
           <TableHeader>
@@ -234,7 +295,7 @@ function formatSize(bytes: number): string {
             </TableRow>
           </TableHeader>
           <TableBody>
-            <TableRow v-for="entry in history" :key="entry.id">
+            <TableRow v-for="entry in filteredHistory" :key="entry.id">
               <TableCell class="whitespace-nowrap text-sm">
                 <div class="flex items-center gap-1">
                   <Clock class="h-3 w-3 text-muted-foreground" />
@@ -253,9 +314,26 @@ function formatSize(bytes: number): string {
               <TableCell class="whitespace-nowrap">{{ formatSize(entry.totalSize) }}</TableCell>
               <TableCell class="max-w-48 truncate text-sm text-muted-foreground">{{ entry.source }}</TableCell>
             </TableRow>
-            <TableRow v-if="!history.length && !loading">
-              <TableCell colspan="7" class="text-center text-muted-foreground py-8">
-                No history entries yet
+            <TableRow v-if="!filteredHistory.length && !loading && !searchQuery && typeFilter === 'all'">
+              <TableCell colspan="7">
+                <EmptyState
+                  :icon="HistoryIcon"
+                  heading="No link history yet"
+                  description="Your link operations will appear here"
+                  action-label="Link New Content"
+                  @action="router.push('/link')"
+                />
+              </TableCell>
+            </TableRow>
+            <TableRow v-if="!filteredHistory.length && (searchQuery || typeFilter !== 'all')">
+              <TableCell colspan="7">
+                <EmptyState
+                  :icon="Search"
+                  heading="No matching entries"
+                  action-label="Clear filters"
+                  action-variant="outline"
+                  @action="searchQuery = ''; typeFilter = 'all'"
+                />
               </TableCell>
             </TableRow>
           </TableBody>

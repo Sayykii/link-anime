@@ -15,12 +15,32 @@ import {
   LogOut,
   Sun,
   Moon,
+  Search,
 } from 'lucide-vue-next'
+
+defineEmits<{
+  'open-command': []
+}>()
 
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 const isDark = ref(false)
+const logoClickCount = ref(0)
+const showMenacing = ref(false)
+let clickTimer: ReturnType<typeof setTimeout> | null = null
+
+function handleLogoClick() {
+  logoClickCount.value++
+  if (clickTimer) clearTimeout(clickTimer)
+  clickTimer = setTimeout(() => { logoClickCount.value = 0 }, 500)
+
+  if (logoClickCount.value >= 3) {
+    logoClickCount.value = 0
+    showMenacing.value = true
+    setTimeout(() => { showMenacing.value = false }, 2500)
+  }
+}
 
 const navItems = [
   { name: 'Dashboard', path: '/', icon: LayoutDashboard },
@@ -52,6 +72,8 @@ async function handleLogout() {
   router.push('/login')
 }
 
+const isMac = typeof navigator !== 'undefined' && navigator.userAgent.includes('Mac')
+
 function isActive(path: string) {
   if (path === '/') return route.path === '/'
   return route.path.startsWith(path)
@@ -61,12 +83,42 @@ function isActive(path: string) {
 <template>
   <aside class="flex h-full w-56 flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border">
     <!-- Logo -->
-    <div class="flex items-center gap-2 p-4">
-      <Link class="h-6 w-6 text-sidebar-primary" />
-      <span class="text-xl font-display tracking-wider uppercase">link-anime</span>
+    <div
+      class="flex items-center gap-2 p-4 cursor-pointer group transition-all duration-300"
+      @click="handleLogoClick"
+    >
+      <Link class="h-6 w-6 text-sidebar-primary transition-all duration-300 group-hover:drop-shadow-[0_0_8px_var(--sidebar-primary)]" />
+      <span class="text-xl font-display tracking-wider uppercase transition-all duration-300 group-hover:text-sidebar-primary group-hover:drop-shadow-[0_0_6px_var(--sidebar-primary)]">link-anime</span>
+      <span class="text-xs text-sidebar-primary/0 group-hover:text-sidebar-primary/30 transition-all duration-500 font-display select-none">&#x30B4;</span>
     </div>
 
+    <!-- Full-screen menacing easter egg overlay -->
+    <Teleport to="body">
+      <Transition name="page">
+        <div
+          v-if="showMenacing"
+          class="fixed inset-0 z-[99998] pointer-events-none flex items-center justify-center"
+        >
+          <div class="menacing-overlay text-[12rem] font-display text-primary/10 select-none leading-none tracking-widest">
+            &#x30B4;&#x30B4;&#x30B4;
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
     <Separator class="bg-sidebar-border" />
+
+    <!-- Search hint -->
+    <button
+      class="mx-2 mt-2 flex items-center gap-2 rounded-md border border-sidebar-border bg-sidebar-accent/50 px-3 py-1.5 text-xs text-sidebar-foreground/50 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
+      @click="$emit('open-command')"
+    >
+      <Search class="h-3 w-3" />
+      <span class="flex-1 text-left">Search...</span>
+      <kbd class="pointer-events-none rounded border border-sidebar-border bg-sidebar px-1 py-0.5 font-mono text-[10px] leading-none text-sidebar-foreground/40">
+        {{ isMac ? '\u2318' : 'Ctrl+' }}K
+      </kbd>
+    </button>
 
     <!-- Navigation -->
     <nav class="flex-1 space-y-1 p-2">
@@ -75,10 +127,10 @@ function isActive(path: string) {
         :key="item.path"
         :variant="isActive(item.path) ? 'secondary' : 'ghost'"
         :class="[
-          'w-full justify-start gap-2',
+          'w-full justify-start gap-2 transition-all duration-200',
           isActive(item.path)
-            ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-            : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+            ? 'bg-sidebar-accent text-sidebar-accent-foreground border-l-2 border-sidebar-primary'
+            : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground border-l-2 border-transparent'
         ]"
         @click="router.push(item.path)"
       >
