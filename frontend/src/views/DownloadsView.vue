@@ -4,7 +4,7 @@ import { useApi } from '@/composables/useApi'
 import { useWebSocket } from '@/composables/useWebSocket'
 import { useRouter } from 'vue-router'
 import { formatSize } from '@/lib/utils'
-import type { DownloadItem, TorrentStatus, NyaaResult, TorrentProgress } from '@/lib/types'
+import type { DownloadItem, TorrentStatus, NyaaResult, TorrentProgress, HistoryEntry } from '@/lib/types'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -61,6 +61,7 @@ import {
   Trash2,
   X,
   ArrowUpDown,
+  CheckCircle,
 } from 'lucide-vue-next'
 import EmptyState from '@/components/EmptyState.vue'
 
@@ -95,6 +96,36 @@ const searchQuery = ref('')
 const localSort = ref('name-asc')
 const localTypeFilter = ref('all') // 'all' | 'folders' | 'files'
 const torrentSort = ref('name')
+
+// Linked file detection
+const history = ref<HistoryEntry[]>([])
+
+/** Normalize a name for matching: lowercase, collapse dots/spaces/underscores/dashes */
+function normalizeName(s: string): string {
+  return s.toLowerCase().replace(/[.\-_ ]+/g, ' ').trim()
+}
+
+/** Map of normalized source name -> HistoryEntry for linked detection */
+const linkedMap = computed(() => {
+  const map = new Map<string, HistoryEntry>()
+  for (const entry of history.value) {
+    if (entry.source) {
+      map.set(normalizeName(entry.source), entry)
+    }
+  }
+  return map
+})
+
+/** Look up whether a download item has been linked, returns the history entry or undefined */
+function getLinkedEntry(downloadName: string): HistoryEntry | undefined {
+  return linkedMap.value.get(normalizeName(downloadName))
+}
+
+function linkedLabel(entry: HistoryEntry): string {
+  if (entry.mediaType === 'movie') return entry.showName
+  const season = entry.season != null ? ` S${entry.season}` : ''
+  return `${entry.showName}${season}`
+}
 
 // Torrent delete state
 const deleteDialogOpen = ref(false)
@@ -196,7 +227,12 @@ watch(activeTab, (val) => {
 async function loadDownloads() {
   loadingDownloads.value = true
   try {
-    downloads.value = await api.getDownloads()
+    const [dl, hist] = await Promise.all([
+      api.getDownloads(),
+      api.getHistory(1000),
+    ])
+    downloads.value = dl
+    history.value = hist
   } catch (e: unknown) {
     toast.error(e instanceof Error ? e.message : 'Failed to load downloads')
   } finally {
@@ -454,19 +490,29 @@ function torrentStateVariant(state: string): 'default' | 'secondary' | 'outline'
                 v-for="item in filteredDownloads"
                 :key="item.path"
                 class="flex items-center gap-3 rounded-lg border p-3"
+                :class="getLinkedEntry(item.name) ? 'border-green-500/30 bg-green-500/5' : ''"
               >
-                <FolderOpen v-if="item.isDir" class="h-5 w-5 text-muted-foreground shrink-0" />
-                <FileVideo v-else class="h-5 w-5 text-muted-foreground shrink-0" />
+                <FolderOpen v-if="item.isDir" class="h-5 w-5 shrink-0" :class="getLinkedEntry(item.name) ? 'text-green-500' : 'text-muted-foreground'" />
+                <FileVideo v-else class="h-5 w-5 shrink-0" :class="getLinkedEntry(item.name) ? 'text-green-500' : 'text-muted-foreground'" />
                 <div class="min-w-0 flex-1">
-                  <div class="truncate font-medium">{{ item.name }}</div>
+                  <div class="flex items-center gap-2">
+                    <span class="truncate font-medium">{{ item.name }}</span>
+                    <Badge v-if="getLinkedEntry(item.name)" variant="outline" class="shrink-0 gap-1 text-green-600 border-green-500/30 text-xs">
+                      <CheckCircle class="h-3 w-3" />
+                      Linked
+                    </Badge>
+                  </div>
                   <div class="text-sm text-muted-foreground">
                     {{ item.videoCount }} video{{ item.videoCount !== 1 ? 's' : '' }}
                     &middot; {{ formatSize(item.size) }}
+                    <template v-if="getLinkedEntry(item.name)">
+                      &middot; <span class="text-green-600 dark:text-green-400">{{ linkedLabel(getLinkedEntry(item.name)!) }}</span>
+                    </template>
                   </div>
                 </div>
                 <Button size="sm" variant="outline" @click="goToLink(item.name)" class="gap-1 shrink-0">
                   <Link class="h-3 w-3" />
-                  Link
+                  {{ getLinkedEntry(item.name) ? 'Re-link' : 'Link' }}
                 </Button>
               </div>
             </div>
