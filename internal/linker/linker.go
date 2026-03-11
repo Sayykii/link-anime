@@ -241,7 +241,7 @@ func writeHistory(req models.LinkRequest, result *models.LinkResult, sourcePath 
 	res, err := database.DB.Exec(
 		`INSERT INTO history (media_type, show_name, season, file_count, total_size, dest_path, source)
 		 VALUES (?, ?, ?, ?, ?, ?, ?)`,
-		req.Type, req.Name, seasonVal, result.Linked, result.Size, result.DestDir, filepath.Base(sourcePath),
+		req.Type, req.Name, seasonVal, result.Linked, result.Size, result.DestDir, req.Source,
 	)
 	if err != nil {
 		return err
