@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { toast } from 'vue-sonner'
-import { Save, TestTube, KeyRound, Loader2 } from 'lucide-vue-next'
+import { Save, TestTube, KeyRound, Loader2, Copy, RefreshCw, Trash2, Puzzle } from 'lucide-vue-next'
 
 const api = useApi()
 const settings = ref<Settings>({
@@ -32,11 +32,15 @@ const newPassword = ref('')
 const changingPassword = ref(false)
 const testingQbit = ref(false)
 const testingShoko = ref(false)
+const apiKey = ref('')
+const generatingKey = ref(false)
 
 onMounted(async () => {
   loading.value = true
   try {
-    settings.value = await api.getSettings()
+    const [s, key] = await Promise.all([api.getSettings(), api.getAPIKey()])
+    settings.value = s
+    apiKey.value = key.apiKey
   } catch (e: unknown) {
     toast.error(e instanceof Error ? e.message : 'Failed to load settings')
   } finally {
@@ -78,6 +82,34 @@ async function testShoko() {
   } finally {
     testingShoko.value = false
   }
+}
+
+async function generateAPIKey() {
+  generatingKey.value = true
+  try {
+    const res = await api.generateAPIKey()
+    apiKey.value = res.apiKey
+    toast.success('API key generated')
+  } catch (e: unknown) {
+    toast.error(e instanceof Error ? e.message : 'Failed to generate API key')
+  } finally {
+    generatingKey.value = false
+  }
+}
+
+async function revokeAPIKey() {
+  try {
+    await api.deleteAPIKey()
+    apiKey.value = ''
+    toast.success('API key revoked')
+  } catch (e: unknown) {
+    toast.error(e instanceof Error ? e.message : 'Failed to revoke API key')
+  }
+}
+
+function copyAPIKey() {
+  navigator.clipboard.writeText(apiKey.value)
+  toast.success('Copied to clipboard')
 }
 
 async function changePassword() {
@@ -208,6 +240,46 @@ async function changePassword() {
       </Button>
 
       <Separator />
+
+      <!-- API Key -->
+      <Card glass>
+        <CardHeader>
+          <CardTitle class="flex items-center gap-2">
+            <Puzzle class="h-5 w-5" />
+            API Key
+          </CardTitle>
+          <CardDescription>
+            Generate an API key for external tools like the Tampermonkey userscript to add torrents from nyaa.si
+          </CardDescription>
+        </CardHeader>
+        <CardContent class="space-y-4">
+          <template v-if="apiKey">
+            <div class="flex items-center gap-2">
+              <Input :model-value="apiKey" readonly class="font-mono text-xs" />
+              <Button variant="outline" size="icon" @click="copyAPIKey" title="Copy">
+                <Copy class="h-4 w-4" />
+              </Button>
+            </div>
+            <div class="flex gap-2">
+              <Button variant="outline" size="sm" @click="generateAPIKey" :disabled="generatingKey" class="gap-2">
+                <RefreshCw class="h-4 w-4" />
+                Regenerate
+              </Button>
+              <Button variant="destructive" size="sm" @click="revokeAPIKey" class="gap-2">
+                <Trash2 class="h-4 w-4" />
+                Revoke
+              </Button>
+            </div>
+          </template>
+          <template v-else>
+            <p class="text-sm text-muted-foreground">No API key generated yet.</p>
+            <Button variant="outline" size="sm" @click="generateAPIKey" :disabled="generatingKey" class="gap-2">
+              <KeyRound class="h-4 w-4" />
+              {{ generatingKey ? 'Generating...' : 'Generate API Key' }}
+            </Button>
+          </template>
+        </CardContent>
+      </Card>
 
       <!-- Change Password -->
       <Card glass>

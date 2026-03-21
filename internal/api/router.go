@@ -72,6 +72,11 @@ func NewRouter(s *Server, staticFS http.FileSystem) chi.Router {
 			r.Put("/settings", s.handleUpdateSettings)
 			r.Post("/settings/password", s.handleChangePassword)
 
+			// API Key
+			r.Get("/apikey", s.handleGetAPIKey)
+			r.Post("/apikey", s.handleGenerateAPIKey)
+			r.Delete("/apikey", s.handleDeleteAPIKey)
+
 			// qBittorrent
 			r.Get("/qbit/torrents", s.handleQbitTorrents)
 			r.Post("/qbit/add", s.handleQbitAdd)

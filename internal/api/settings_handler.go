@@ -99,6 +99,28 @@ func (s *Server) handleChangePassword(w http.ResponseWriter, r *http.Request) {
 	jsonOK(w, map[string]bool{"ok": true})
 }
 
+func (s *Server) handleGenerateAPIKey(w http.ResponseWriter, r *http.Request) {
+	key, err := auth.GenerateAPIKey()
+	if err != nil {
+		jsonError(w, "failed to generate API key", http.StatusInternalServerError)
+		return
+	}
+	jsonOK(w, map[string]string{"apiKey": key})
+}
+
+func (s *Server) handleGetAPIKey(w http.ResponseWriter, r *http.Request) {
+	key := auth.GetAPIKey()
+	jsonOK(w, map[string]string{"apiKey": key})
+}
+
+func (s *Server) handleDeleteAPIKey(w http.ResponseWriter, r *http.Request) {
+	if err := auth.DeleteAPIKey(); err != nil {
+		jsonError(w, "failed to delete API key", http.StatusInternalServerError)
+		return
+	}
+	jsonOK(w, map[string]bool{"ok": true})
+}
+
 // ReinitClients updates qbit, shoko, and notifier with current DB settings.
 // Exported so main.go can call it on startup to pick up DB-saved credentials.
 func (s *Server) ReinitClients() {

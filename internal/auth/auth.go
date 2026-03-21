@@ -101,9 +101,57 @@ func DestroySession(token string) {
 	mu.Unlock()
 }
 
+// GenerateAPIKey creates a new random API key and stores it in the database.
+func GenerateAPIKey() (string, error) {
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	key := "la_" + hex.EncodeToString(b)
+	if err := database.SetSetting("api_key", key); err != nil {
+		return "", err
+	}
+	return key, nil
+}
+
+// GetAPIKey returns the current API key, or empty if none exists.
+func GetAPIKey() string {
+	key, err := database.GetSetting("api_key")
+	if err != nil {
+		return ""
+	}
+	return key
+}
+
+// DeleteAPIKey removes the stored API key.
+func DeleteAPIKey() error {
+	return database.SetSetting("api_key", "")
+}
+
+// validateAPIKey checks if the provided key matches the stored API key.
+func validateAPIKey(key string) bool {
+	if key == "" {
+		return false
+	}
+	stored := GetAPIKey()
+	return stored != "" && stored == key
+}
+
 // Middleware protects routes requiring authentication.
+// Accepts either a session cookie or an X-API-Key header.
 func Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Check API key first (for external tools like userscripts)
+		if apiKey := r.Header.Get("X-API-Key"); apiKey != "" {
+			if validateAPIKey(apiKey) {
+				next.ServeHTTP(w, r)
+				return
+			}
+			http.Error(w, `{"error":"invalid api key"}`, http.StatusUnauthorized)
+			return
+		}
+
+		// Fall back to session cookie
 		cookie, err := r.Cookie(sessionCookieName)
 		if err != nil || !ValidateSession(cookie.Value) {
 			http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)

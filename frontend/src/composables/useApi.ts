@@ -69,6 +69,11 @@ export function useApi() {
     updateSettings: (settings: Settings) => request<{ ok: boolean }>('PUT', '/settings', settings),
     changePassword: (current: string, newPass: string) => request<{ ok: boolean }>('POST', '/settings/password', { current, new: newPass }),
 
+    // API Key
+    getAPIKey: () => request<{ apiKey: string }>('GET', '/apikey'),
+    generateAPIKey: () => request<{ apiKey: string }>('POST', '/apikey'),
+    deleteAPIKey: () => request<{ ok: boolean }>('DELETE', '/apikey'),
+
     // qBittorrent
     getQbitTorrents: (category?: string) => request<TorrentStatus[]>('GET', `/qbit/torrents${category ? `?category=${encodeURIComponent(category)}` : ''}`),
     addQbitTorrent: (magnet: string, category?: string) => request<{ ok: boolean }>('POST', '/qbit/add', { magnet, category }),
