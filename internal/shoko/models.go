@@ -13,7 +13,7 @@ type ShokoSeries struct {
 	Images ShokoImages   `json:"Images"`
 	Sizes  ShokoSizes    `json:"Sizes"`
 	Size   int           `json:"Size"` // total local file count
-	AirsOn *ShokoAirsOn  `json:"AirsOn,omitempty"`
+	AirsOn []string      `json:"AirsOn,omitempty"`
 	Created string       `json:"Created"`
 	Updated string       `json:"Updated"`
 
@@ -59,17 +59,6 @@ type ShokoSizeBreakdown struct {
 	Total   int `json:"Total"`
 	Watched int `json:"Watched"`
 	Missing int `json:"Missing,omitempty"`
-}
-
-// ShokoAirsOn contains the day(s) a series airs.
-type ShokoAirsOn struct {
-	Monday    bool `json:"Monday"`
-	Tuesday   bool `json:"Tuesday"`
-	Wednesday bool `json:"Wednesday"`
-	Thursday  bool `json:"Thursday"`
-	Friday    bool `json:"Friday"`
-	Saturday  bool `json:"Saturday"`
-	Sunday    bool `json:"Sunday"`
 }
 
 // ShokoAniDB contains AniDB-specific metadata.
