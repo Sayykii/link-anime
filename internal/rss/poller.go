@@ -106,24 +106,72 @@ func (p *Poller) poll() {
 	}
 }
 
+// FilterResults applies a rule's filters (seeders, resolution, groups) to search results.
+// Exported so the test-query endpoint can reuse the same logic.
+func FilterResults(results []models.NyaaResult, rule models.RSSRule) []models.NyaaResult {
+	var filtered []models.NyaaResult
+
+	// Parse groups allowlist once
+	var groups []string
+	if rule.Groups != "" {
+		for _, g := range strings.Split(rule.Groups, ",") {
+			g = strings.TrimSpace(g)
+			if g != "" {
+				groups = append(groups, strings.ToLower(g))
+			}
+		}
+	}
+
+	for _, result := range results {
+		// Min seeders filter
+		if rule.MinSeeders > 0 && result.Seeders < rule.MinSeeders {
+			continue
+		}
+
+		// Resolution filter
+		if rule.Resolution != "" && !strings.Contains(strings.ToLower(result.Title), strings.ToLower(rule.Resolution)) {
+			continue
+		}
+
+		// Release group filter
+		if len(groups) > 0 {
+			titleLower := strings.ToLower(result.Title)
+			matched := false
+			for _, g := range groups {
+				if strings.Contains(titleLower, g) {
+					matched = true
+					break
+				}
+			}
+			if !matched {
+				continue
+			}
+		}
+
+		filtered = append(filtered, result)
+	}
+
+	return filtered
+}
+
 // checkRule fetches the Nyaa RSS feed for a rule and processes matches.
 func (p *Poller) checkRule(rule models.RSSRule) {
-	results, err := nyaa.Search(rule.Query, "trusted")
+	// Use rule's filter, default to "noremakes" if empty
+	filter := rule.Filter
+	if filter == "" {
+		filter = "noremakes"
+	}
+
+	results, err := nyaa.Search(rule.Query, filter, rule.Category)
 	if err != nil {
 		log.Printf("RSS poll [%s]: search failed: %v", rule.Name, err)
 		return
 	}
 
+	// Apply filters (seeders, resolution, groups)
+	results = FilterResults(results, rule)
+
 	for _, result := range results {
-		// Apply filters
-		if rule.MinSeeders > 0 && result.Seeders < rule.MinSeeders {
-			continue
-		}
-
-		if rule.Resolution != "" && !strings.Contains(strings.ToLower(result.Title), strings.ToLower(rule.Resolution)) {
-			continue
-		}
-
 		// Generate a hash for deduplication (use title hash since Nyaa RSS doesn't give info hashes directly)
 		hash := hashTitle(result.Title)
 
@@ -148,8 +196,8 @@ func (p *Poller) checkRule(rule models.RSSRule) {
 			status = "pending"
 		}
 
-		// Record the match
-		if err := InsertMatch(rule.ID, result.Title, hash, status); err != nil {
+		// Record the match (store title as torrent_name for auto-link matching)
+		if err := InsertMatch(rule.ID, result.Title, hash, status, result.Title); err != nil {
 			log.Printf("RSS poll [%s]: failed to record match: %v", rule.Name, err)
 		}
 
@@ -174,7 +222,8 @@ func (p *Poller) checkRule(rule models.RSSRule) {
 func ListRules() ([]models.RSSRule, error) {
 	rows, err := database.DB.Query(`
 		SELECT r.id, r.name, r.query, r.show_name, r.season, r.media_type,
-		       r.min_seeders, r.resolution, r.enabled, r.last_check, r.created_at,
+		       r.min_seeders, r.resolution, r.filter, r.category, r.groups,
+		       r.auto_link, r.enabled, r.last_check, r.created_at,
 		       (SELECT COUNT(*) FROM rss_matches WHERE rule_id = r.id) as match_count
 		FROM rss_rules r
 		ORDER BY r.created_at DESC
@@ -189,7 +238,8 @@ func ListRules() ([]models.RSSRule, error) {
 		var r models.RSSRule
 		var lastCheck sql.NullTime
 		if err := rows.Scan(&r.ID, &r.Name, &r.Query, &r.ShowName, &r.Season,
-			&r.MediaType, &r.MinSeeders, &r.Resolution, &r.Enabled,
+			&r.MediaType, &r.MinSeeders, &r.Resolution, &r.Filter, &r.Category,
+			&r.Groups, &r.AutoLink, &r.Enabled,
 			&lastCheck, &r.CreatedAt, &r.MatchCount); err != nil {
 			return nil, fmt.Errorf("scan rule: %w", err)
 		}
@@ -208,11 +258,13 @@ func GetRule(id int64) (*models.RSSRule, error) {
 	var lastCheck sql.NullTime
 	err := database.DB.QueryRow(`
 		SELECT r.id, r.name, r.query, r.show_name, r.season, r.media_type,
-		       r.min_seeders, r.resolution, r.enabled, r.last_check, r.created_at,
+		       r.min_seeders, r.resolution, r.filter, r.category, r.groups,
+		       r.auto_link, r.enabled, r.last_check, r.created_at,
 		       (SELECT COUNT(*) FROM rss_matches WHERE rule_id = r.id) as match_count
 		FROM rss_rules r WHERE r.id = ?
 	`, id).Scan(&r.ID, &r.Name, &r.Query, &r.ShowName, &r.Season,
-		&r.MediaType, &r.MinSeeders, &r.Resolution, &r.Enabled,
+		&r.MediaType, &r.MinSeeders, &r.Resolution, &r.Filter, &r.Category,
+		&r.Groups, &r.AutoLink, &r.Enabled,
 		&lastCheck, &r.CreatedAt, &r.MatchCount)
 	if err == sql.ErrNoRows {
 		return nil, nil
@@ -229,9 +281,9 @@ func GetRule(id int64) (*models.RSSRule, error) {
 // CreateRule inserts a new RSS rule.
 func CreateRule(r *models.RSSRule) error {
 	result, err := database.DB.Exec(`
-		INSERT INTO rss_rules (name, query, show_name, season, media_type, min_seeders, resolution, enabled)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-	`, r.Name, r.Query, r.ShowName, r.Season, r.MediaType, r.MinSeeders, r.Resolution, r.Enabled)
+		INSERT INTO rss_rules (name, query, show_name, season, media_type, min_seeders, resolution, filter, category, groups, auto_link, enabled)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`, r.Name, r.Query, r.ShowName, r.Season, r.MediaType, r.MinSeeders, r.Resolution, r.Filter, r.Category, r.Groups, r.AutoLink, r.Enabled)
 	if err != nil {
 		return fmt.Errorf("create rule: %w", err)
 	}
@@ -243,9 +295,11 @@ func CreateRule(r *models.RSSRule) error {
 func UpdateRule(r *models.RSSRule) error {
 	_, err := database.DB.Exec(`
 		UPDATE rss_rules SET name = ?, query = ?, show_name = ?, season = ?,
-		       media_type = ?, min_seeders = ?, resolution = ?, enabled = ?
+		       media_type = ?, min_seeders = ?, resolution = ?, filter = ?,
+		       category = ?, groups = ?, auto_link = ?, enabled = ?
 		WHERE id = ?
-	`, r.Name, r.Query, r.ShowName, r.Season, r.MediaType, r.MinSeeders, r.Resolution, r.Enabled, r.ID)
+	`, r.Name, r.Query, r.ShowName, r.Season, r.MediaType, r.MinSeeders, r.Resolution,
+		r.Filter, r.Category, r.Groups, r.AutoLink, r.Enabled, r.ID)
 	if err != nil {
 		return fmt.Errorf("update rule: %w", err)
 	}
@@ -273,7 +327,7 @@ func ToggleRule(id int64, enabled bool) error {
 // ListMatches returns matches, optionally filtered by rule ID.
 func ListMatches(ruleID int64, limit int) ([]models.RSSMatch, error) {
 	query := `
-		SELECT m.id, m.rule_id, m.title, m.hash, m.matched, m.status, r.name
+		SELECT m.id, m.rule_id, m.title, m.hash, m.torrent_name, m.matched, m.status, r.name
 		FROM rss_matches m
 		JOIN rss_rules r ON r.id = m.rule_id
 	`
@@ -300,7 +354,7 @@ func ListMatches(ruleID int64, limit int) ([]models.RSSMatch, error) {
 	var matches []models.RSSMatch
 	for rows.Next() {
 		var m models.RSSMatch
-		if err := rows.Scan(&m.ID, &m.RuleID, &m.Title, &m.Hash, &m.Matched, &m.Status, &m.RuleName); err != nil {
+		if err := rows.Scan(&m.ID, &m.RuleID, &m.Title, &m.Hash, &m.TorrentName, &m.Matched, &m.Status, &m.RuleName); err != nil {
 			return nil, fmt.Errorf("scan match: %w", err)
 		}
 		matches = append(matches, m)
@@ -310,16 +364,51 @@ func ListMatches(ruleID int64, limit int) ([]models.RSSMatch, error) {
 }
 
 // InsertMatch records a new RSS match.
-func InsertMatch(ruleID int64, title, hash, status string) error {
+func InsertMatch(ruleID int64, title, hash, status, torrentName string) error {
 	_, err := database.DB.Exec(`
-		INSERT OR IGNORE INTO rss_matches (rule_id, title, hash, status) VALUES (?, ?, ?, ?)
-	`, ruleID, title, hash, status)
+		INSERT OR IGNORE INTO rss_matches (rule_id, title, hash, status, torrent_name) VALUES (?, ?, ?, ?, ?)
+	`, ruleID, title, hash, status, torrentName)
 	return err
 }
 
 // ClearMatches deletes all matches for a rule.
 func ClearMatches(ruleID int64) error {
 	_, err := database.DB.Exec("DELETE FROM rss_matches WHERE rule_id = ?", ruleID)
+	return err
+}
+
+// FindMatchByTorrentName looks up a "downloaded" RSS match by torrent name.
+// Returns the match and its associated rule, or nil if not found.
+func FindMatchByTorrentName(name string) (*models.RSSMatch, *models.RSSRule) {
+	var m models.RSSMatch
+	var r models.RSSRule
+	var lastCheck sql.NullTime
+
+	err := database.DB.QueryRow(`
+		SELECT m.id, m.rule_id, m.title, m.hash, m.torrent_name, m.matched, m.status,
+		       r.id, r.name, r.show_name, r.season, r.media_type, r.auto_link,
+		       r.last_check
+		FROM rss_matches m
+		JOIN rss_rules r ON r.id = m.rule_id
+		WHERE m.torrent_name = ? AND m.status = 'downloaded'
+		LIMIT 1
+	`, name).Scan(
+		&m.ID, &m.RuleID, &m.Title, &m.Hash, &m.TorrentName, &m.Matched, &m.Status,
+		&r.ID, &r.Name, &r.ShowName, &r.Season, &r.MediaType, &r.AutoLink,
+		&lastCheck,
+	)
+	if err != nil {
+		return nil, nil
+	}
+	if lastCheck.Valid {
+		r.LastCheck = &lastCheck.Time
+	}
+	return &m, &r
+}
+
+// UpdateMatchStatus updates the status of a match.
+func UpdateMatchStatus(id int64, status string) error {
+	_, err := database.DB.Exec("UPDATE rss_matches SET status = ? WHERE id = ?", status, id)
 	return err
 }
 

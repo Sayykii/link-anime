@@ -92,6 +92,20 @@ func migrate() error {
 		}
 	}
 
+	// Column additions (ALTER TABLE doesn't support IF NOT EXISTS in SQLite,
+	// so we ignore "duplicate column" errors)
+	alterMigrations := []string{
+		`ALTER TABLE rss_rules ADD COLUMN filter TEXT DEFAULT 'noremakes'`,
+		`ALTER TABLE rss_rules ADD COLUMN category TEXT DEFAULT '1_2'`,
+		`ALTER TABLE rss_rules ADD COLUMN groups TEXT DEFAULT ''`,
+		`ALTER TABLE rss_rules ADD COLUMN auto_link BOOLEAN DEFAULT 1`,
+		`ALTER TABLE rss_matches ADD COLUMN torrent_name TEXT DEFAULT ''`,
+	}
+
+	for _, m := range alterMigrations {
+		DB.Exec(m) // ignore "duplicate column" errors
+	}
+
 	return nil
 }
 

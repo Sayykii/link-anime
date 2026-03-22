@@ -82,6 +82,29 @@ func main() {
 		},
 		5*time.Second,
 	)
+	// Wire auto-linker: when a download completes, check if it's from an RSS rule
+	settingOr := func(key, fallback string) string {
+		if v, err := database.GetSetting(key); err == nil && v != "" {
+			return v
+		}
+		return fallback
+	}
+	autoLinker := &rss.AutoLinker{
+		Hub:      hub,
+		Notifier: func() *notify.Notifier { return server.Notifier },
+		DownloadDir: func() string { return settingOr("download_dir", cfg.DownloadDir) },
+		MediaDir:    func() string { return settingOr("media_dir", cfg.MediaDir) },
+		MoviesDir:   func() string { return settingOr("movies_dir", cfg.MoviesDir) },
+		ShokoScan: func() {
+			if server.Shoko != nil && server.Shoko.IsConfigured() {
+				log.Printf("[autolink] triggering Shoko scan")
+				if err := server.Shoko.ScanAllImportFolders(); err != nil {
+					log.Printf("[autolink] Shoko scan failed: %v", err)
+				}
+			}
+		},
+	}
+	dlMonitor.OnComplete = autoLinker.HandleCompletion
 	dlMonitor.Start()
 	defer dlMonitor.Stop()
 

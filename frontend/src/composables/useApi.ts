@@ -88,6 +88,7 @@ export function useApi() {
     testShoko: () => request<{ ok: boolean }>('GET', '/shoko/test'),
 
     // RSS Rules
+    testRSSRule: (rule: Partial<RSSRule>) => request<NyaaResult[]>('POST', '/rss/rules/test', rule),
     listRSSRules: () => request<RSSRule[]>('GET', '/rss/rules'),
     getRSSRule: (id: number) => request<RSSRule>('GET', `/rss/rule?id=${id}`),
     createRSSRule: (rule: Omit<RSSRule, 'id' | 'createdAt' | 'lastCheck' | 'matchCount'>) => request<RSSRule>('POST', '/rss/rules', rule),

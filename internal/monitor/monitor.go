@@ -20,6 +20,10 @@ type DownloadMonitor struct {
 	category   func() string
 	interval   time.Duration
 
+	// OnComplete is called for each torrent that transitions to completed.
+	// Used by auto-link to process RSS-matched downloads.
+	OnComplete func(models.TorrentStatus)
+
 	// Track previous torrent states to detect completions
 	prevStates map[string]float64
 	mu         sync.Mutex
@@ -150,6 +154,11 @@ func (m *DownloadMonitor) poll() {
 					},
 					"blue",
 				)
+			}
+
+			// Trigger auto-link callback (for RSS-matched downloads)
+			if m.OnComplete != nil {
+				go m.OnComplete(t)
 			}
 		}
 	}

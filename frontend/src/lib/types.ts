@@ -123,6 +123,10 @@ export interface RSSRule {
   mediaType: 'series' | 'movie'
   minSeeders: number
   resolution: string
+  filter: string    // "", "noremakes", "trusted"
+  category: string  // nyaa category: "1_2", "1_0", etc.
+  groups: string    // comma-separated release group allowlist
+  autoLink: boolean
   enabled: boolean
   lastCheck?: string
   createdAt: string
@@ -134,6 +138,7 @@ export interface RSSMatch {
   ruleId: number
   title: string
   hash: string
+  torrentName: string
   matched: string
   status: 'downloaded' | 'linked' | 'failed' | 'pending'
   ruleName: string

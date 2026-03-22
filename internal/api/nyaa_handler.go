@@ -14,8 +14,9 @@ func (s *Server) handleNyaaSearch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	filter := r.URL.Query().Get("filter")
+	category := r.URL.Query().Get("category")
 
-	results, err := nyaa.Search(query, filter)
+	results, err := nyaa.Search(query, filter, category)
 	if err != nil {
 		jsonError(w, err.Error(), http.StatusInternalServerError)
 		return

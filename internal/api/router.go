@@ -99,6 +99,7 @@ func NewRouter(s *Server, staticFS http.FileSystem) chi.Router {
 			r.Post("/rss/rules/toggle", s.handleToggleRSSRule)
 			r.Get("/rss/matches", s.handleListRSSMatches)
 			r.Delete("/rss/matches", s.handleClearRSSMatches)
+			r.Post("/rss/rules/test", s.handleTestRSSRule)
 			r.Post("/rss/poll", s.handleRSSPollNow)
 
 			// WebSocket

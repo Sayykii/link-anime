@@ -148,6 +148,10 @@ type RSSRule struct {
 	MediaType  string     `json:"mediaType"`
 	MinSeeders int        `json:"minSeeders"`
 	Resolution string     `json:"resolution,omitempty"`
+	Filter     string     `json:"filter,omitempty"`   // "", "noremakes", "trusted"
+	Category   string     `json:"category,omitempty"` // nyaa category: "1_2", "1_0", etc.
+	Groups     string     `json:"groups,omitempty"`   // comma-separated release group allowlist
+	AutoLink   bool       `json:"autoLink"`
 	Enabled    bool       `json:"enabled"`
 	LastCheck  *time.Time `json:"lastCheck,omitempty"`
 	CreatedAt  time.Time  `json:"createdAt"`
@@ -176,11 +180,12 @@ type TorrentProgress struct {
 
 // RSSMatch records a torrent matched by an RSS rule.
 type RSSMatch struct {
-	ID       int64     `json:"id"`
-	RuleID   int64     `json:"ruleId"`
-	Title    string    `json:"title"`
-	Hash     string    `json:"hash"`
-	Matched  time.Time `json:"matched"`
-	Status   string    `json:"status"`             // "downloaded", "linked", "failed"
-	RuleName string    `json:"ruleName,omitempty"` // populated by join queries
+	ID          int64     `json:"id"`
+	RuleID      int64     `json:"ruleId"`
+	Title       string    `json:"title"`
+	Hash        string    `json:"hash"`
+	TorrentName string    `json:"torrentName,omitempty"` // qBit torrent name for auto-link matching
+	Matched     time.Time `json:"matched"`
+	Status      string    `json:"status"`             // "downloaded", "linked", "failed"
+	RuleName    string    `json:"ruleName,omitempty"` // populated by join queries
 }

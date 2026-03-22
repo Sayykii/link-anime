@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"link-anime/internal/models"
+	"link-anime/internal/nyaa"
 	"link-anime/internal/rss"
 )
 
@@ -197,6 +198,42 @@ func (s *Server) handleClearRSSMatches(w http.ResponseWriter, r *http.Request) {
 	}
 
 	jsonOK(w, map[string]bool{"ok": true})
+}
+
+// handleTestRSSRule runs a search with the rule's parameters and returns matches
+// without saving anything. Used for previewing what a rule would match.
+func (s *Server) handleTestRSSRule(w http.ResponseWriter, r *http.Request) {
+	var rule models.RSSRule
+	if err := json.NewDecoder(r.Body).Decode(&rule); err != nil {
+		jsonError(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+
+	if rule.Query == "" {
+		jsonError(w, "query is required", http.StatusBadRequest)
+		return
+	}
+
+	filter := rule.Filter
+	if filter == "" {
+		filter = "noremakes"
+	}
+
+	results, err := nyaa.Search(rule.Query, filter, rule.Category)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Apply the same filters the poller would use
+	results = rss.FilterResults(results, rule)
+
+	if results == nil {
+		jsonOK(w, []interface{}{})
+		return
+	}
+
+	jsonOK(w, results)
 }
 
 // handleRSSPollNow triggers an immediate RSS poll.

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useApi } from '@/composables/useApi'
-import type { RSSRule, RSSMatch } from '@/lib/types'
+import type { RSSRule, RSSMatch, NyaaResult } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -41,6 +41,8 @@ import {
   Eraser,
   Search,
   X,
+  Link,
+  FlaskConical,
 } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
 
@@ -66,6 +68,10 @@ const deletingRule = ref<RSSRule | null>(null)
 const showClearDialog = ref(false)
 const clearingRule = ref<RSSRule | null>(null)
 
+// Test query
+const testResults = ref<NyaaResult[] | null>(null)
+const testLoading = ref(false)
+
 // Form fields
 const form = ref({
   name: '',
@@ -75,6 +81,10 @@ const form = ref({
   mediaType: 'series' as 'series' | 'movie',
   minSeeders: 1,
   resolution: '',
+  filter: 'noremakes',
+  category: '1_2',
+  groups: '',
+  autoLink: true,
   enabled: true,
 })
 
@@ -124,6 +134,7 @@ async function loadData() {
 
 function openCreateDialog() {
   editingRule.value = null
+  testResults.value = null
   form.value = {
     name: '',
     query: '',
@@ -132,6 +143,10 @@ function openCreateDialog() {
     mediaType: 'series',
     minSeeders: 1,
     resolution: '',
+    filter: 'noremakes',
+    category: '1_2',
+    groups: '',
+    autoLink: true,
     enabled: true,
   }
   showRuleDialog.value = true
@@ -139,6 +154,7 @@ function openCreateDialog() {
 
 function openEditDialog(rule: RSSRule) {
   editingRule.value = rule
+  testResults.value = null
   form.value = {
     name: rule.name,
     query: rule.query,
@@ -147,6 +163,10 @@ function openEditDialog(rule: RSSRule) {
     mediaType: rule.mediaType as 'series' | 'movie',
     minSeeders: rule.minSeeders,
     resolution: rule.resolution,
+    filter: rule.filter || 'noremakes',
+    category: rule.category || '1_2',
+    groups: rule.groups || '',
+    autoLink: rule.autoLink,
     enabled: rule.enabled,
   }
   showRuleDialog.value = true
@@ -176,6 +196,22 @@ async function saveRule() {
     toast.error('Failed to save rule', { description: err.message })
   } finally {
     savingRule.value = false
+  }
+}
+
+async function testQuery() {
+  if (!form.value.query) {
+    toast.error('Enter a query first')
+    return
+  }
+  testLoading.value = true
+  testResults.value = null
+  try {
+    testResults.value = await api.testRSSRule(form.value)
+  } catch (err: any) {
+    toast.error('Test failed', { description: err.message })
+  } finally {
+    testLoading.value = false
   }
 }
 
@@ -252,6 +288,19 @@ function statusColor(status: string) {
     default: return 'default'
   }
 }
+
+const filterLabel: Record<string, string> = {
+  '': 'All',
+  'noremakes': 'No Remakes',
+  'trusted': 'Trusted Only',
+}
+
+const categoryLabel: Record<string, string> = {
+  '1_2': 'English',
+  '1_0': 'All Anime',
+  '1_3': 'Non-English',
+  '1_4': 'Raw',
+}
 </script>
 
 <template>
@@ -311,6 +360,10 @@ function statusColor(status: string) {
                   <CardTitle class="text-base">{{ rule.name }}</CardTitle>
                   <Badge v-if="rule.enabled" variant="default" class="text-xs">Active</Badge>
                   <Badge v-else variant="secondary" class="text-xs">Disabled</Badge>
+                  <Badge v-if="rule.autoLink" variant="outline" class="text-xs gap-1">
+                    <Link class="h-3 w-3" />
+                    Auto-link
+                  </Badge>
                   <Badge v-if="rule.matchCount > 0" variant="outline" class="text-xs">
                     {{ rule.matchCount }} match{{ rule.matchCount !== 1 ? 'es' : '' }}
                   </Badge>
@@ -338,6 +391,15 @@ function statusColor(status: string) {
                 Query: <code class="bg-muted px-1 py-0.5 rounded text-xs">{{ rule.query }}</code>
                 <span v-if="rule.resolution" class="ml-2">
                   Res: <code class="bg-muted px-1 py-0.5 rounded text-xs">{{ rule.resolution }}</code>
+                </span>
+                <span v-if="rule.groups" class="ml-2">
+                  Groups: <code class="bg-muted px-1 py-0.5 rounded text-xs">{{ rule.groups }}</code>
+                </span>
+                <span class="ml-2">
+                  Filter: <code class="bg-muted px-1 py-0.5 rounded text-xs">{{ filterLabel[rule.filter] || rule.filter || 'No Remakes' }}</code>
+                </span>
+                <span v-if="rule.category && rule.category !== '1_2'" class="ml-2">
+                  Category: <code class="bg-muted px-1 py-0.5 rounded text-xs">{{ categoryLabel[rule.category] || rule.category }}</code>
                 </span>
                 <span class="ml-2">
                   Min seeders: <code class="bg-muted px-1 py-0.5 rounded text-xs">{{ rule.minSeeders }}</code>
@@ -452,7 +514,7 @@ function statusColor(status: string) {
 
     <!-- Create/Edit Rule Dialog -->
     <Dialog v-model:open="showRuleDialog">
-      <DialogContent class="sm:max-w-lg">
+      <DialogContent class="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{{ editingRule ? 'Edit Rule' : 'Create Rule' }}</DialogTitle>
           <DialogDescription>
@@ -468,8 +530,44 @@ function statusColor(status: string) {
 
           <div class="grid gap-2">
             <Label for="query">Nyaa Search Query</Label>
-            <Input id="query" v-model="form.query" placeholder="e.g. [SubsPlease] Dandadan 1080p" />
+            <Input id="query" v-model="form.query" placeholder="e.g. Dandadan 1080p" />
             <p class="text-xs text-muted-foreground">Same query you'd type on nyaa.si search</p>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div class="grid gap-2">
+              <Label>Nyaa Filter</Label>
+              <Select v-model="form.filter">
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="noremakes">No Remakes</SelectItem>
+                  <SelectItem value="">All</SelectItem>
+                  <SelectItem value="trusted">Trusted Only</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div class="grid gap-2">
+              <Label>Category</Label>
+              <Select v-model="form.category">
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1_2">Anime - English</SelectItem>
+                  <SelectItem value="1_0">Anime - All</SelectItem>
+                  <SelectItem value="1_3">Anime - Non-English</SelectItem>
+                  <SelectItem value="1_4">Anime - Raw</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div class="grid gap-2">
+            <Label for="groups">Release Groups</Label>
+            <Input id="groups" v-model="form.groups" placeholder="e.g. SubsPlease, VARYG, Erai-raws" />
+            <p class="text-xs text-muted-foreground">Comma-separated. Only grab releases that contain one of these group names. Leave empty to accept all.</p>
           </div>
 
           <Separator />
@@ -522,9 +620,47 @@ function statusColor(status: string) {
               </Select>
             </div>
           </div>
+
+          <label class="flex items-center justify-between rounded-lg border p-3 cursor-pointer">
+            <div>
+              <span class="text-sm font-medium">Auto-link</span>
+              <p class="text-xs text-muted-foreground">Automatically link to your library when download completes</p>
+            </div>
+            <input type="checkbox" v-model="form.autoLink" class="h-4 w-4 rounded border-border accent-primary" />
+          </label>
+
+          <!-- Test Query Results -->
+          <div v-if="testResults !== null" class="space-y-2">
+            <Separator />
+            <div class="flex items-center justify-between">
+              <Label class="text-sm">Test Results ({{ testResults.length }})</Label>
+              <Button variant="ghost" size="sm" @click="testResults = null" class="h-6 px-2">
+                <X class="h-3 w-3" />
+              </Button>
+            </div>
+            <div v-if="testResults.length === 0" class="text-center py-4 text-sm text-muted-foreground">
+              No results match this query and filters
+            </div>
+            <div v-else class="max-h-48 overflow-y-auto rounded border">
+              <Table>
+                <TableBody>
+                  <TableRow v-for="(r, i) in testResults" :key="i" class="text-xs">
+                    <TableCell class="max-w-xs truncate py-1.5" :title="r.title">{{ r.title }}</TableCell>
+                    <TableCell class="w-16 py-1.5 text-muted-foreground">{{ r.size }}</TableCell>
+                    <TableCell class="w-12 py-1.5 text-muted-foreground">{{ r.seeders }}S</TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </div>
+          </div>
         </div>
 
-        <DialogFooter>
+        <DialogFooter class="gap-2 sm:gap-0">
+          <Button variant="outline" @click="testQuery" :disabled="testLoading || !form.query" class="mr-auto gap-2">
+            <Loader2 v-if="testLoading" class="h-4 w-4 animate-spin" />
+            <FlaskConical v-else class="h-4 w-4" />
+            Test Query
+          </Button>
           <Button variant="outline" @click="showRuleDialog = false">Cancel</Button>
           <Button @click="saveRule" :disabled="savingRule">
             <Loader2 v-if="savingRule" class="mr-2 h-4 w-4 animate-spin" />

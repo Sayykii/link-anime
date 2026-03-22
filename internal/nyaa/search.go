@@ -35,12 +35,16 @@ type rssChannel struct {
 var magnetRe = regexp.MustCompile(`magnet:\?xt=urn:btih:[a-fA-F0-9]{40}`)
 
 // Search queries Nyaa's RSS feed for anime torrents.
-func Search(query string, filter string) ([]models.NyaaResult, error) {
+// category defaults to "1_2" (Anime - English-translated) if empty.
+func Search(query string, filter string, category string) ([]models.NyaaResult, error) {
+	if category == "" {
+		category = "1_2"
+	}
 	params := url.Values{
 		"page": {"rss"},
 		"q":    {query},
-		"c":    {"1_2"}, // Anime - English-translated
-		"f":    {"0"},   // No filter
+		"c":    {category},
+		"f":    {"0"}, // No filter
 	}
 
 	if filter == "trusted" {
@@ -95,8 +99,8 @@ func Search(query string, filter string) ([]models.NyaaResult, error) {
 
 // SearchWithMagnets is like Search but also fetches magnet links from each result page.
 // This is slower but provides actual magnet URIs.
-func SearchWithMagnets(query string, filter string, limit int) ([]models.NyaaResult, error) {
-	results, err := Search(query, filter)
+func SearchWithMagnets(query string, filter string, category string, limit int) ([]models.NyaaResult, error) {
+	results, err := Search(query, filter, category)
 	if err != nil {
 		return nil, err
 	}
