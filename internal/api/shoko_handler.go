@@ -164,16 +164,23 @@ func (s *Server) handleShokoFolderMap(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Collect folder names from both series and movies dirs
+	var folderNames []string
+
 	mediaDir := s.getMediaDir()
 	shows, err := scanner.ScanLibrary(mediaDir)
-	if err != nil {
-		jsonError(w, err.Error(), http.StatusInternalServerError)
-		return
+	if err == nil {
+		for _, show := range shows {
+			folderNames = append(folderNames, show.Name)
+		}
 	}
 
-	folderNames := make([]string, len(shows))
-	for i, show := range shows {
-		folderNames[i] = show.Name
+	moviesDir := s.getMoviesDir()
+	movies, err := scanner.ScanMovies(moviesDir)
+	if err == nil {
+		for _, movie := range movies {
+			folderNames = append(folderNames, movie.Name)
+		}
 	}
 
 	seriesMap, err := s.Shoko.GetFolderSeriesMap(folderNames)

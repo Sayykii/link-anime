@@ -52,8 +52,10 @@ const progressPercent = ref(0)
 // Step 6: Final result
 const finalResult = ref<LinkResult | null>(null)
 
-// Existing shows for selection
+// Existing shows/movies for selection
 const existingShows = computed(() => library.shows.map(s => s.name))
+const existingMovies = computed(() => library.movies.map(m => m.name))
+const existingItems = computed(() => mediaType.value === 'series' ? existingShows.value : existingMovies.value)
 
 // Get poster URL for a folder name via the folder map
 function findShokoPoster(folderName: string): string | null {
@@ -64,17 +66,17 @@ function findShokoPoster(folderName: string): string | null {
 // Current poster for the selected show name
 const currentPoster = computed(() => findShokoPoster(showName.value))
 
-// Filtered existing shows based on search
-const filteredExistingShows = computed(() => {
-  if (!showSearch.value) return existingShows.value
+// Filtered existing items based on search
+const filteredExistingItems = computed(() => {
+  if (!showSearch.value) return existingItems.value
   const q = showSearch.value.toLowerCase()
-  return existingShows.value.filter(name => name.toLowerCase().includes(q))
+  return existingItems.value.filter(name => name.toLowerCase().includes(q))
 })
 
 onMounted(async () => {
   connect()
   await loadDownloads()
-  await library.fetchShows()
+  await Promise.all([library.fetchShows(), library.fetchMovies()])
 
   // Load Shoko folder map for poster matching
   try {
@@ -326,9 +328,9 @@ function reset() {
           </div>
         </div>
 
-        <!-- Existing shows with posters -->
-        <div v-if="mediaType === 'series' && existingShows.length" class="space-y-2">
-          <Label class="text-xs text-muted-foreground">Or select existing show:</Label>
+        <!-- Existing shows/movies with posters -->
+        <div v-if="existingItems.length" class="space-y-2">
+          <Label class="text-xs text-muted-foreground">Or select existing {{ mediaType === 'series' ? 'show' : 'movie' }}:</Label>
 
           <!-- Search filter -->
           <div class="relative">
@@ -346,7 +348,7 @@ function reset() {
           <!-- Show list with posters -->
           <div class="max-h-64 overflow-y-auto rounded-md border">
             <button
-              v-for="name in filteredExistingShows"
+              v-for="name in filteredExistingItems"
               :key="name"
               class="flex items-center gap-3 w-full p-2 text-left hover:bg-accent transition-colors border-b last:border-b-0"
               :class="{ 'bg-accent': showName === name }"
@@ -368,7 +370,7 @@ function reset() {
               <span class="text-sm font-medium truncate">{{ name }}</span>
               <Check v-if="showName === name" class="h-4 w-4 text-primary ml-auto flex-shrink-0" />
             </button>
-            <div v-if="filteredExistingShows.length === 0" class="p-3 text-center text-sm text-muted-foreground">
+            <div v-if="filteredExistingItems.length === 0" class="p-3 text-center text-sm text-muted-foreground">
               No matches
             </div>
           </div>
