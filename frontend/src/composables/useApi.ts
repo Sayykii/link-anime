@@ -91,6 +91,7 @@ export function useApi() {
     shokoSeriesSearch: (q: string) => request<ShokoSeries[]>('GET', `/shoko/series/search?q=${encodeURIComponent(q)}`),
     shokoSeriesDetail: (id: number) => request<ShokoSeries>('GET', `/shoko/series/${id}`),
     shokoSeriesEpisodes: (id: number, includeMissing = true) => request<ShokoEpisode[]>('GET', `/shoko/series/${id}/episodes?includeMissing=${includeMissing}`),
+    shokoFolderMap: () => request<Record<string, { shokoId: number; name: string; posterUrl?: string }>>('GET', '/shoko/folder-map'),
 
     // RSS Rules
     testRSSRule: (rule: Partial<RSSRule>) => request<NyaaResult[]>('POST', '/rss/rules/test', rule),

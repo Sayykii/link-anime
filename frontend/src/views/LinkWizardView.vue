@@ -3,9 +3,9 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useApi } from '@/composables/useApi'
 import { useWebSocket } from '@/composables/useWebSocket'
 import { useLibraryStore } from '@/stores/library'
-import { formatSize, seriesPosterUrl } from '@/lib/utils'
+import { formatSize } from '@/lib/utils'
 import { useRoute, useRouter } from 'vue-router'
-import type { DownloadItem, LinkResult, LinkProgress, ShokoSeries } from '@/lib/types'
+import type { DownloadItem, LinkResult, LinkProgress } from '@/lib/types'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -39,8 +39,8 @@ const seasonNumber = ref(1)
 const suggestedName = ref('')
 const suggestedSeason = ref<number | null>(null)
 
-// Shoko series data for poster matching
-const shokoSeriesList = ref<ShokoSeries[]>([])
+// Shoko folder mapping for poster matching
+const folderMap = ref<Record<string, { shokoId: number; name: string; posterUrl?: string }>>({})
 const shokoAvailable = ref(false)
 const showSearch = ref('')
 
@@ -55,21 +55,10 @@ const finalResult = ref<LinkResult | null>(null)
 // Existing shows for selection
 const existingShows = computed(() => library.shows.map(s => s.name))
 
-// Match existing show names to Shoko series for posters
+// Get poster URL for a folder name via the folder map
 function findShokoPoster(folderName: string): string | null {
-  if (!shokoSeriesList.value.length) return null
-  const lower = folderName.toLowerCase()
-  const match = shokoSeriesList.value.find(s =>
-    s.Name.toLowerCase() === lower ||
-    s.AniDB?.Title?.toLowerCase() === lower
-  )
-  if (match) return seriesPosterUrl(match.Images)
-  // Fuzzy: check if folder name is contained in Shoko name or vice versa
-  const fuzzy = shokoSeriesList.value.find(s =>
-    s.Name.toLowerCase().includes(lower) ||
-    lower.includes(s.Name.toLowerCase())
-  )
-  return fuzzy ? seriesPosterUrl(fuzzy.Images) : null
+  const entry = folderMap.value[folderName]
+  return entry?.posterUrl ?? null
 }
 
 // Current poster for the selected show name
@@ -87,10 +76,9 @@ onMounted(async () => {
   await loadDownloads()
   await library.fetchShows()
 
-  // Load Shoko series for poster matching
+  // Load Shoko folder map for poster matching
   try {
-    const data = await api.shokoSeries(1, 100)
-    shokoSeriesList.value = data.series || []
+    folderMap.value = await api.shokoFolderMap()
     shokoAvailable.value = true
   } catch {
     shokoAvailable.value = false

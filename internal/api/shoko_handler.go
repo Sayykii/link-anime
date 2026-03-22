@@ -4,6 +4,9 @@ import (
 	"net/http"
 	"strconv"
 
+	"link-anime/internal/scanner"
+	"link-anime/internal/shoko"
+
 	"github.com/go-chi/chi/v5"
 )
 
@@ -153,6 +156,33 @@ func (s *Server) handleShokoDashboard(w http.ResponseWriter, r *http.Request) {
 	}
 
 	jsonOK(w, data)
+}
+
+func (s *Server) handleShokoFolderMap(w http.ResponseWriter, r *http.Request) {
+	if s.Shoko == nil || !s.Shoko.IsConfigured() {
+		jsonError(w, "Shoko not configured", http.StatusBadRequest)
+		return
+	}
+
+	mediaDir := s.getMediaDir()
+	shows, err := scanner.ScanLibrary(mediaDir)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	folderNames := make([]string, len(shows))
+	for i, show := range shows {
+		folderNames[i] = show.Name
+	}
+
+	seriesMap, err := s.Shoko.GetFolderSeriesMap(folderNames)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	jsonOK(w, shoko.BuildFolderMappingResponse(seriesMap))
 }
 
 func (s *Server) handleShokoImage(w http.ResponseWriter, r *http.Request) {

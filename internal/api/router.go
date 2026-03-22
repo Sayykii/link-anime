@@ -94,6 +94,7 @@ func NewRouter(s *Server, staticFS http.FileSystem) chi.Router {
 			r.Get("/shoko/series/search", s.handleShokoSeriesSearch)
 			r.Get("/shoko/series/{id}", s.handleShokoSeriesDetail)
 			r.Get("/shoko/series/{id}/episodes", s.handleShokoSeriesEpisodes)
+			r.Get("/shoko/folder-map", s.handleShokoFolderMap)
 			r.Get("/shoko/image/{source}/{type}/{id}", s.handleShokoImage)
 
 			// RSS Rules
