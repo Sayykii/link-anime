@@ -160,3 +160,99 @@ export interface TorrentProgress {
   torrents: TorrentStatus[]
   completed?: TorrentStatus[]
 }
+
+// --- Shoko types ---
+
+export interface ShokoImage {
+  ID: string
+  Type: string
+  Source: string
+  Preferred: boolean
+  Width?: number
+  Height?: number
+}
+
+export interface ShokoSizeBreakdown {
+  Local: number
+  Total: number
+  Watched: number
+  Missing?: number
+}
+
+export interface ShokoSizes {
+  Total: ShokoSizeBreakdown
+  Episodes?: ShokoSizeBreakdown
+  Specials?: ShokoSizeBreakdown
+}
+
+export interface ShokoAniDB {
+  ID: number
+  Title: string
+  Description: string
+  Type: string
+  EpisodeCount: number
+  AirDate?: string
+  EndDate?: string
+  Rating?: { Value: number; MaxValue: number; Votes: number; Source: string }
+}
+
+export interface ShokoSeries {
+  Name: string
+  IDs: { ID: number; AniDB: number; MAL?: number[]; ParentGroup: number }
+  Images: { Posters?: ShokoImage[]; Backdrops?: ShokoImage[]; Banners?: ShokoImage[] }
+  Sizes: ShokoSizes
+  Size: number
+  AirsOn?: Record<string, boolean>
+  Created: string
+  Updated: string
+  AniDB?: ShokoAniDB
+}
+
+export interface ShokoEpisode {
+  Name: string
+  IDs: { ID: number; ParentSeries: number; AniDB: number }
+  Images: { Posters?: ShokoImage[]; Backdrops?: ShokoImage[] }
+  Duration: string
+  Watched: string | null
+  WatchCount: number
+  Size: number // 0 = missing
+  Created: string
+  AniDB?: {
+    ID: number
+    Type: string
+    EpisodeNumber: number
+    Title: string
+    AirDate?: string
+    Summary?: string
+  }
+}
+
+export interface ShokoDashboardStats {
+  FileCount: number
+  FileSize: number
+  SeriesCount: number
+  GroupCount: number
+  FinishedSeries: number
+  WatchedEpisodes: number
+  WatchedHours: number
+  MissingEpisodes: number
+  MissingEpisodesCollecting: number
+  UnrecognizedFiles: number
+}
+
+export interface ShokoDashboardEpisode {
+  Title: string
+  Number: number
+  Type: string
+  AirDate?: string
+  SeriesTitle: string
+  SeriesPoster?: ShokoImage
+  IDs: { ID: number; Series: number; ShokoSeries: number }
+}
+
+export interface ShokoDashboard {
+  stats: ShokoDashboardStats | null
+  recentlyAdded: ShokoDashboardEpisode[] | null
+  continueWatching: ShokoDashboardEpisode[] | null
+  calendar: ShokoDashboardEpisode[] | null
+}

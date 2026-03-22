@@ -20,6 +20,11 @@ const router = createRouter({
       component: () => import('@/views/LibraryView.vue'),
     },
     {
+      path: '/library/series/:id',
+      name: 'series-detail',
+      component: () => import('@/views/SeriesDetailView.vue'),
+    },
+    {
       path: '/link',
       name: 'link',
       component: () => import('@/views/LinkWizardView.vue'),

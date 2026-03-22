@@ -1,4 +1,4 @@
-import type { LinkRequest, LinkResult, LibraryStats, Show, Movie, DownloadItem, HistoryEntry, ParseResult, Settings, TorrentStatus, NyaaResult, RSSRule, RSSMatch, UnlinkPreview } from '@/lib/types'
+import type { LinkRequest, LinkResult, LibraryStats, Show, Movie, DownloadItem, HistoryEntry, ParseResult, Settings, TorrentStatus, NyaaResult, RSSRule, RSSMatch, UnlinkPreview, ShokoSeries, ShokoEpisode, ShokoDashboard } from '@/lib/types'
 
 class ApiError extends Error {
   status: number
@@ -86,6 +86,11 @@ export function useApi() {
     // Shoko
     shokoScan: () => request<{ ok: boolean }>('POST', '/shoko/scan'),
     testShoko: () => request<{ ok: boolean }>('GET', '/shoko/test'),
+    shokoDashboard: () => request<ShokoDashboard>('GET', '/shoko/dashboard'),
+    shokoSeries: (page = 1, pageSize = 50) => request<{ series: ShokoSeries[]; total: number }>('GET', `/shoko/series?page=${page}&pageSize=${pageSize}`),
+    shokoSeriesSearch: (q: string) => request<ShokoSeries[]>('GET', `/shoko/series/search?q=${encodeURIComponent(q)}`),
+    shokoSeriesDetail: (id: number) => request<ShokoSeries>('GET', `/shoko/series/${id}`),
+    shokoSeriesEpisodes: (id: number, includeMissing = true) => request<ShokoEpisode[]>('GET', `/shoko/series/${id}/episodes?includeMissing=${includeMissing}`),
 
     // RSS Rules
     testRSSRule: (rule: Partial<RSSRule>) => request<NyaaResult[]>('POST', '/rss/rules/test', rule),

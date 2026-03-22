@@ -89,6 +89,12 @@ func NewRouter(s *Server, staticFS http.FileSystem) chi.Router {
 			// Shoko
 			r.Post("/shoko/scan", s.handleShokoScan)
 			r.Get("/shoko/test", s.handleShokoTest)
+			r.Get("/shoko/dashboard", s.handleShokoDashboard)
+			r.Get("/shoko/series", s.handleShokoSeries)
+			r.Get("/shoko/series/search", s.handleShokoSeriesSearch)
+			r.Get("/shoko/series/{id}", s.handleShokoSeriesDetail)
+			r.Get("/shoko/series/{id}/episodes", s.handleShokoSeriesEpisodes)
+			r.Get("/shoko/image/{source}/{type}/{id}", s.handleShokoImage)
 
 			// RSS Rules
 			r.Get("/rss/rules", s.handleListRSSRules)
