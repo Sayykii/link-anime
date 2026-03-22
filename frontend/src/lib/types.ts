@@ -172,17 +172,21 @@ export interface ShokoImage {
   Height?: number
 }
 
-export interface ShokoSizeBreakdown {
-  Local: number
-  Total: number
-  Watched: number
-  Missing?: number
+export interface ShokoEpisodeTypeCounts {
+  Unknown: number
+  Episodes: number
+  Specials: number
+  Credits: number
+  Trailers: number
+  Parodies: number
+  Others: number
 }
 
 export interface ShokoSizes {
-  Total: ShokoSizeBreakdown
-  Episodes?: ShokoSizeBreakdown
-  Specials?: ShokoSizeBreakdown
+  Local: ShokoEpisodeTypeCounts
+  Watched: ShokoEpisodeTypeCounts
+  Total: ShokoEpisodeTypeCounts
+  Missing: { Episodes: number; Specials: number }
 }
 
 export interface ShokoAniDB {

@@ -46,19 +46,29 @@ type ShokoImage struct {
 	Height   int    `json:"Height,omitempty"`
 }
 
-// ShokoSizes contains episode count breakdowns.
+// ShokoSizes contains episode count breakdowns by type.
 type ShokoSizes struct {
-	Total    ShokoSizeBreakdown `json:"Total"`
-	Episodes *ShokoSizeBreakdown `json:"Episodes,omitempty"`
-	Specials *ShokoSizeBreakdown `json:"Specials,omitempty"`
+	Local   ShokoEpisodeTypeCounts  `json:"Local"`
+	Watched ShokoEpisodeTypeCounts  `json:"Watched"`
+	Total   ShokoEpisodeTypeCounts  `json:"Total"`
+	Missing ShokoMissingCounts      `json:"Missing"`
 }
 
-// ShokoSizeBreakdown has local/total/watched/missing counts.
-type ShokoSizeBreakdown struct {
-	Local   int `json:"Local"`
-	Total   int `json:"Total"`
-	Watched int `json:"Watched"`
-	Missing int `json:"Missing,omitempty"`
+// ShokoEpisodeTypeCounts has counts per episode type.
+type ShokoEpisodeTypeCounts struct {
+	Unknown  int `json:"Unknown"`
+	Episodes int `json:"Episodes"`
+	Specials int `json:"Specials"`
+	Credits  int `json:"Credits"`
+	Trailers int `json:"Trailers"`
+	Parodies int `json:"Parodies"`
+	Others   int `json:"Others"`
+}
+
+// ShokoMissingCounts has missing counts (only episodes and specials).
+type ShokoMissingCounts struct {
+	Episodes int `json:"Episodes"`
+	Specials int `json:"Specials"`
 }
 
 // ShokoAniDB contains AniDB-specific metadata.

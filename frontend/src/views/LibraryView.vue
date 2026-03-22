@@ -239,13 +239,13 @@ async function executeUnlink(force: boolean) {
                 <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-2 pt-6">
                   <div class="flex items-center gap-1.5">
                     <Badge
-                      :variant="(series.Sizes?.Total?.Local ?? 0) < (series.Sizes?.Total?.Total ?? 0) ? 'destructive' : 'secondary'"
+                      :variant="(series.Sizes?.Missing?.Episodes ?? 0) > 0 ? 'destructive' : 'secondary'"
                       class="text-xs"
                     >
-                      {{ series.Sizes?.Total?.Local ?? series.Size }}/{{ series.Sizes?.Total?.Total || series.Sizes?.Episodes?.Total || '?' }}
+                      {{ series.Sizes?.Local?.Episodes ?? series.Size }}/{{ series.Sizes?.Total?.Episodes || '?' }}
                     </Badge>
-                    <Badge v-if="(series.Sizes?.Total?.Watched ?? 0) > 0" variant="outline" class="text-xs text-white border-white/30">
-                      {{ series.Sizes.Total.Watched }} seen
+                    <Badge v-if="(series.Sizes?.Watched?.Episodes ?? 0) > 0" variant="outline" class="text-xs text-white border-white/30">
+                      {{ series.Sizes.Watched.Episodes }} seen
                     </Badge>
                   </div>
                 </div>
