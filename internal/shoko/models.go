@@ -38,7 +38,7 @@ type ShokoImages struct {
 
 // ShokoImage represents a single image reference.
 type ShokoImage struct {
-	ID       string `json:"ID"`
+	ID       int    `json:"ID"`
 	Type     string `json:"Type"`     // Poster, Backdrop, Banner, etc.
 	Source   string `json:"Source"`   // AniDB, TMDB, Shoko
 	Preferred bool  `json:"Preferred"`

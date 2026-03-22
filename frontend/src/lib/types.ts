@@ -164,7 +164,7 @@ export interface TorrentProgress {
 // --- Shoko types ---
 
 export interface ShokoImage {
-  ID: string
+  ID: number
   Type: string
   Source: string
   Preferred: boolean
