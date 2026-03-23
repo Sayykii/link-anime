@@ -120,7 +120,7 @@ function formatAirDate(dateStr?: string): string {
 
         <!-- Info -->
         <div class="flex-1 min-w-0">
-          <h1 class="text-2xl font-bold">{{ series.Name }}</h1>
+          <h1 class="font-display text-2xl tracking-wider uppercase">{{ series.Name }}</h1>
 
           <div class="flex flex-wrap items-center gap-2 mt-2">
             <Badge v-if="series.AniDB?.Type" variant="outline">{{ series.AniDB.Type }}</Badge>

@@ -29,6 +29,14 @@ const loading = ref(false)
 // Step 1: Source selection
 const downloads = ref<DownloadItem[]>([])
 const selectedSource = ref<DownloadItem | null>(null)
+const sourceFilter = ref('')
+const filteredSources = computed(() => {
+  if (!sourceFilter.value) return downloads.value
+  const q = sourceFilter.value.toLowerCase().replace(/[.\-_ ]+/g, ' ')
+  return downloads.value.filter(d =>
+    d.name.toLowerCase().replace(/[.\-_ ]+/g, ' ').includes(q)
+  )
+})
 
 // Step 2: Type
 const mediaType = ref<'series' | 'movie'>('series')
@@ -210,6 +218,7 @@ function reset() {
   finalResult.value = null
   progressPercent.value = 0
   showSearch.value = ''
+  sourceFilter.value = ''
   loadDownloads()
 }
 </script>
@@ -222,14 +231,34 @@ function reset() {
     </div>
 
     <!-- Step indicator -->
-    <div class="flex items-center gap-2 text-sm">
-      <Badge :variant="step >= 1 ? 'default' : 'outline'">1. Source</Badge>
-      <ArrowRight class="h-3 w-3 text-muted-foreground" />
-      <Badge :variant="step >= 2 ? 'default' : 'outline'">2. Type</Badge>
-      <ArrowRight class="h-3 w-3 text-muted-foreground" />
-      <Badge :variant="step >= 3 ? 'default' : 'outline'">3. Details</Badge>
-      <ArrowRight class="h-3 w-3 text-muted-foreground" />
-      <Badge :variant="step >= 4 ? 'default' : 'outline'">4. Confirm</Badge>
+    <div class="flex items-center gap-1 sm:gap-2 text-sm overflow-x-auto">
+      <template
+        v-for="(s, i) in [
+          { num: 1, label: 'Source' },
+          { num: 2, label: 'Type' },
+          { num: 3, label: 'Details' },
+          { num: 4, label: 'Confirm' },
+        ]"
+        :key="s.num"
+      >
+        <button
+          :disabled="s.num >= step || step >= 5"
+          @click="s.num < step && step < 5 ? step = s.num : null"
+          class="shrink-0"
+        >
+          <Badge
+            :variant="step >= s.num ? 'default' : 'outline'"
+            :class="[
+              s.num < step && step < 5 ? 'cursor-pointer hover:bg-primary/80' : '',
+              'transition-colors'
+            ]"
+          >
+            <span class="hidden sm:inline">{{ s.num }}. {{ s.label }}</span>
+            <span class="sm:hidden">{{ s.num }}</span>
+          </Badge>
+        </button>
+        <ArrowRight v-if="i < 3" class="h-3 w-3 text-muted-foreground shrink-0" />
+      </template>
     </div>
 
     <!-- Step 1: Select source -->
@@ -246,9 +275,28 @@ function reset() {
         <div v-else-if="!downloads.length" class="text-center text-muted-foreground py-8">
           No downloads found in the download directory
         </div>
+        <template v-else>
+          <!-- Source filter (shown when more than 5 downloads) -->
+          <div v-if="downloads.length > 5" class="relative mb-3">
+            <Search class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input v-model="sourceFilter" placeholder="Filter downloads..." class="pl-9 h-9" />
+            <button
+              v-if="sourceFilter"
+              class="absolute right-2.5 top-2.5 text-muted-foreground hover:text-foreground"
+              @click="sourceFilter = ''"
+            >
+              <X class="h-4 w-4" />
+            </button>
+          </div>
+          <div v-if="sourceFilter && !filteredSources.length" class="text-center text-muted-foreground py-8">
+            No downloads matching "{{ sourceFilter }}"
+            <div class="mt-2">
+              <Button variant="outline" size="sm" @click="sourceFilter = ''">Clear filter</Button>
+            </div>
+          </div>
         <div v-else class="space-y-2">
           <button
-            v-for="item in downloads"
+            v-for="item in filteredSources"
             :key="item.path"
             class="flex w-full items-center gap-3 rounded-lg border p-3 text-left hover:bg-accent transition-colors"
             @click="selectSource(item)"
@@ -264,6 +312,7 @@ function reset() {
             </div>
           </button>
         </div>
+        </template>
       </CardContent>
     </Card>
 

@@ -362,8 +362,8 @@ function torrentStateVariant(state: string): 'default' | 'secondary' | 'outline'
 <template>
   <div class="space-y-6">
     <div>
-      <h1 class="text-3xl font-bold">Downloads</h1>
-      <p class="text-muted-foreground">Manage downloads, search Nyaa, and monitor torrents</p>
+      <h1 class="font-display text-3xl tracking-wider uppercase">Downloads</h1>
+      <p class="text-muted-foreground text-sm mt-1">Manage downloads, search Nyaa, and monitor torrents</p>
     </div>
 
     <Tabs v-model="activeTab">
@@ -510,7 +510,12 @@ function torrentStateVariant(state: string): 'default' | 'secondary' | 'outline'
                     </template>
                   </div>
                 </div>
-                <Button size="sm" variant="outline" @click="goToLink(item.name)" class="gap-1 shrink-0">
+                <Button
+                  size="sm"
+                  :variant="getLinkedEntry(item.name) ? 'ghost' : 'outline'"
+                  @click="goToLink(item.name)"
+                  class="gap-1 shrink-0"
+                >
                   <Link class="h-3 w-3" />
                   {{ getLinkedEntry(item.name) ? 'Re-link' : 'Link' }}
                 </Button>

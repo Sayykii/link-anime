@@ -29,6 +29,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Search, RefreshCw, Tv, Film, Loader2, AlertTriangle, X, Trash2 } from 'lucide-vue-next'
 import EmptyState from '@/components/EmptyState.vue'
 import { toast } from 'vue-sonner'
@@ -44,6 +45,15 @@ const shokoAvailable = ref(false)
 const shokoSeries = ref<ShokoSeries[]>([])
 const shokoTotal = ref(0)
 
+// Pagination
+const shokoPage = ref(1)
+const shokoPageSize = 50
+const hasMoreSeries = computed(() => shokoSeries.value.length < shokoTotal.value)
+const loadingMore = ref(false)
+
+// Folder map for movie posters
+const folderMap = ref<Record<string, { shokoId: number; name: string; posterUrl?: string }>>({})
+
 // Unlink state (for filesystem fallback)
 const unlinkDialogOpen = ref(false)
 const unlinkTarget = ref<{ name: string; path: string; type: 'show' | 'season' | 'movie' }>()
@@ -54,10 +64,15 @@ const unlinkExecuting = ref(false)
 onMounted(async () => {
   // Try Shoko first
   try {
-    const data = await api.shokoSeries(1, 100)
+    const data = await api.shokoSeries(1, shokoPageSize)
     shokoSeries.value = data.series || []
     shokoTotal.value = data.total
     shokoAvailable.value = true
+
+    // Load folder map for movie posters
+    try {
+      folderMap.value = await api.shokoFolderMap()
+    } catch { /* ignore */ }
   } catch {
     shokoAvailable.value = false
   }
@@ -91,10 +106,11 @@ const filteredMovies = computed(() => {
 
 function refresh() {
   loading.value = true
+  shokoPage.value = 1
   const promises: Promise<void>[] = []
   if (shokoAvailable.value) {
     promises.push(
-      api.shokoSeries(1, 100).then(data => {
+      api.shokoSeries(1, shokoPageSize).then(data => {
         shokoSeries.value = data.series || []
         shokoTotal.value = data.total
       })
@@ -102,6 +118,26 @@ function refresh() {
   }
   promises.push(library.fetchShows() as any, library.fetchMovies() as any)
   Promise.all(promises).finally(() => { loading.value = false })
+}
+
+async function loadMore() {
+  loadingMore.value = true
+  try {
+    shokoPage.value++
+    const data = await api.shokoSeries(shokoPage.value, shokoPageSize)
+    shokoSeries.value.push(...(data.series || []))
+    shokoTotal.value = data.total
+  } catch (err: any) {
+    toast.error('Failed to load more', { description: err.message })
+    shokoPage.value--
+  } finally {
+    loadingMore.value = false
+  }
+}
+
+function moviePosterUrl(movieName: string): string | null {
+  const entry = folderMap.value[movieName]
+  return entry?.posterUrl ?? null
 }
 
 // Unlink helpers (same as before for filesystem fallback)
@@ -176,9 +212,19 @@ async function executeUnlink(force: boolean) {
       </button>
     </div>
 
-    <!-- Loading -->
-    <div v-if="loading" class="flex items-center justify-center py-12">
-      <Loader2 class="h-8 w-8 animate-spin text-muted-foreground" />
+    <!-- Loading skeleton grid -->
+    <div v-if="loading" class="space-y-4">
+      <div class="flex gap-2">
+        <Skeleton class="h-9 w-28 rounded-md" />
+        <Skeleton class="h-9 w-28 rounded-md" />
+      </div>
+      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+        <div v-for="i in 12" :key="i" class="space-y-2">
+          <Skeleton class="aspect-[2/3] rounded-lg w-full" />
+          <Skeleton class="h-4 w-3/4" />
+          <Skeleton class="h-3 w-1/2" />
+        </div>
+      </div>
     </div>
 
     <!-- Shoko-powered card grid -->
@@ -265,51 +311,74 @@ async function executeUnlink(force: boolean) {
               <p v-if="series.AniDB?.Type" class="text-xs text-muted-foreground mt-0.5">{{ series.AniDB.Type }}</p>
             </button>
           </div>
+
+          <!-- Load More -->
+          <div v-if="hasMoreSeries && !searchQuery" class="flex justify-center pt-4">
+            <Button variant="outline" @click="loadMore" :disabled="loadingMore" class="gap-2">
+              <Loader2 v-if="loadingMore" class="h-4 w-4 animate-spin" />
+              Load More ({{ shokoSeries.length }}/{{ shokoTotal }})
+            </Button>
+          </div>
         </TabsContent>
 
-        <!-- Movies tab (filesystem-based, same as before) -->
+        <!-- Movies tab with poster grid -->
         <TabsContent value="movies">
-          <Card glass>
-            <CardContent class="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Movie</TableHead>
-                    <TableHead class="w-32">Files</TableHead>
-                    <TableHead class="w-24 text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  <TableRow v-for="movie in filteredMovies" :key="movie.path">
-                    <TableCell class="font-medium">{{ movie.name }}</TableCell>
-                    <TableCell>{{ movie.files }}</TableCell>
-                    <TableCell class="text-right">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        class="h-8 w-8 text-muted-foreground hover:text-destructive"
-                        @click="openUnlinkDialog(movie.name, movie.path, 'movie')"
-                        title="Unlink movie"
-                      >
-                        <Trash2 class="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                  <TableRow v-if="!filteredMovies.length">
-                    <TableCell colspan="3">
-                      <EmptyState
-                        :icon="Film"
-                        heading="No movies yet"
-                        description="Link anime movies from your downloads"
-                        action-label="Link New Content"
-                        @action="router.push('/link')"
-                      />
-                    </TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+          <div v-if="filteredMovies.length === 0" class="py-12">
+            <EmptyState
+              v-if="searchQuery"
+              :icon="Search"
+              :heading="`No results for &quot;${searchQuery}&quot;`"
+              action-label="Clear filter"
+              action-variant="outline"
+              @action="searchQuery = ''"
+            />
+            <EmptyState
+              v-else
+              :icon="Film"
+              heading="No movies yet"
+              description="Link anime movies from your downloads"
+              action-label="Link New Content"
+              @action="router.push('/link')"
+            />
+          </div>
+
+          <div v-else class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+            <div
+              v-for="movie in filteredMovies"
+              :key="movie.path"
+              class="group text-left"
+            >
+              <div class="relative aspect-[2/3] rounded-lg overflow-hidden bg-muted mb-2 ring-1 ring-border/50">
+                <img
+                  v-if="moviePosterUrl(movie.name)"
+                  :src="moviePosterUrl(movie.name)!"
+                  :alt="movie.name"
+                  class="w-full h-full object-cover"
+                  loading="lazy"
+                />
+                <div v-else class="w-full h-full flex items-center justify-center">
+                  <Film class="h-10 w-10 text-muted-foreground/30" />
+                </div>
+                <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-2 pt-6">
+                  <Badge variant="secondary" class="text-xs">
+                    {{ movie.files }} file{{ movie.files !== 1 ? 's' : '' }}
+                  </Badge>
+                </div>
+              </div>
+              <div class="flex items-start justify-between gap-1">
+                <p class="text-sm font-medium leading-tight line-clamp-2">{{ movie.name }}</p>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  class="h-6 w-6 shrink-0 text-muted-foreground hover:text-destructive"
+                  @click="openUnlinkDialog(movie.name, movie.path, 'movie')"
+                  title="Unlink movie"
+                >
+                  <Trash2 class="h-3 w-3" />
+                </Button>
+              </div>
+            </div>
+          </div>
         </TabsContent>
       </Tabs>
     </template>

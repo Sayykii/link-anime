@@ -5,11 +5,15 @@ import { useAuthStore } from '@/stores/auth'
 import AppSidebar from '@/components/layout/AppSidebar.vue'
 import CommandPalette from '@/components/CommandPalette.vue'
 import { Toaster } from '@/components/ui/sonner'
+import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet'
+import { Button } from '@/components/ui/button'
+import { Menu } from 'lucide-vue-next'
 
 const auth = useAuthStore()
 const router = useRouter()
 const route = useRoute()
 const commandOpen = ref(false)
+const mobileOpen = ref(false)
 
 function handleKeydown(e: KeyboardEvent) {
   if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
@@ -44,6 +48,13 @@ watch(() => auth.checking, (isChecking) => {
     router.push('/login')
   }
 })
+
+// Close mobile drawer and scroll to top on navigation
+watch(() => route.path, () => {
+  mobileOpen.value = false
+  const main = document.querySelector('main')
+  if (main) main.scrollTo({ top: 0 })
+})
 </script>
 
 <template>
@@ -60,13 +71,35 @@ watch(() => auth.checking, (isChecking) => {
   </div>
 
   <div v-else class="flex h-screen overflow-hidden">
-    <AppSidebar @open-command="commandOpen = true" />
-    <main class="flex-1 overflow-auto p-6">
-      <router-view v-slot="{ Component }">
-        <Transition name="page" mode="out-in">
-          <component :is="Component" :key="route.path" />
-        </Transition>
-      </router-view>
+    <!-- Desktop sidebar: hidden on mobile -->
+    <div class="hidden md:block">
+      <AppSidebar @open-command="commandOpen = true" />
+    </div>
+
+    <main class="flex-1 overflow-auto">
+      <!-- Mobile header bar -->
+      <div class="sticky top-0 z-20 flex items-center gap-3 border-b bg-background/80 backdrop-blur-sm p-3 md:hidden">
+        <Sheet v-model:open="mobileOpen">
+          <SheetTrigger as-child>
+            <Button variant="ghost" size="icon" class="h-9 w-9">
+              <Menu class="h-5 w-5" />
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="left" class="w-56 p-0">
+            <SheetTitle class="sr-only">Navigation</SheetTitle>
+            <AppSidebar @open-command="commandOpen = true; mobileOpen = false" />
+          </SheetContent>
+        </Sheet>
+        <span class="font-display text-lg tracking-wider uppercase">link-anime</span>
+      </div>
+
+      <div class="p-6">
+        <router-view v-slot="{ Component }">
+          <Transition name="page" mode="out-in">
+            <component :is="Component" :key="route.path" />
+          </Transition>
+        </router-view>
+      </div>
     </main>
   </div>
 
