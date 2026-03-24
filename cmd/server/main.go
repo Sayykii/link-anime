@@ -62,8 +62,18 @@ func main() {
 	// This ensures credentials saved via the Settings UI survive container restarts.
 	server.ReinitClients()
 
+	// Helper to prefer DB settings over config defaults
+	settingOr := func(key, fallback string) string {
+		if v, err := database.GetSetting(key); err == nil && v != "" {
+			return v
+		}
+		return fallback
+	}
+
 	// Create RSS poller (getter func reads server.Qbit so reinitClients updates are reflected)
 	poller := rss.NewPoller(hub, func() *qbit.Client { return server.Qbit }, 15*time.Minute)
+	poller.MediaDir = func() string { return settingOr("media_dir", cfg.MediaDir) }
+	poller.MoviesDir = func() string { return settingOr("movies_dir", cfg.MoviesDir) }
 	poller.Start()
 	defer poller.Stop()
 	server.Poller = poller
@@ -82,13 +92,6 @@ func main() {
 		},
 		5*time.Second,
 	)
-	// Wire auto-linker: when a download completes, check if it's from an RSS rule
-	settingOr := func(key, fallback string) string {
-		if v, err := database.GetSetting(key); err == nil && v != "" {
-			return v
-		}
-		return fallback
-	}
 	autoLinker := &rss.AutoLinker{
 		Hub:      hub,
 		Notifier: func() *notify.Notifier { return server.Notifier },

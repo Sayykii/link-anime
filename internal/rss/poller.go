@@ -6,6 +6,9 @@ import (
 	"encoding/hex"
 	"fmt"
 	"log"
+	"os"
+	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -14,6 +17,7 @@ import (
 	"link-anime/internal/models"
 	"link-anime/internal/nyaa"
 	"link-anime/internal/qbit"
+	"link-anime/internal/scanner"
 	"link-anime/internal/ws"
 )
 
@@ -29,6 +33,8 @@ type Poller struct {
 	stopCh   chan struct{}
 	mu       sync.Mutex
 	running  bool
+	MediaDir func() string
+	MoviesDir func() string
 }
 
 // NewPoller creates a new RSS poller.
@@ -180,6 +186,17 @@ func (p *Poller) checkRule(rule models.RSSRule) {
 			continue
 		}
 
+		// Check if the episode already exists in the library
+		epNum := parseEpisodeNum(result.Title)
+		if epNum > 0 && p.episodeExistsInLibrary(rule, epNum) {
+			log.Printf("RSS skip [%s]: episode %d already in library, skipping %s", rule.Name, epNum, result.Title)
+			// Record as skipped so we don't check again
+			if err := InsertMatch(rule.ID, result.Title, hash, "skipped", result.Title); err != nil {
+				log.Printf("RSS poll [%s]: failed to record skipped match: %v", rule.Name, err)
+			}
+			continue
+		}
+
 		// New match found
 		log.Printf("RSS match [%s]: %s", rule.Name, result.Title)
 
@@ -214,6 +231,74 @@ func (p *Poller) checkRule(rule models.RSSRule) {
 
 	// Update last_check timestamp
 	updateLastCheck(rule.ID)
+}
+
+// reEpisodeNum extracts episode numbers from torrent titles like S01E05, E05, - 05, etc.
+var reEpisodeNum = regexp.MustCompile(`(?i)(?:S\d+\s*)?E(\d+)|(?:^|[\s\-])\s*(\d{2,3})\s*(?:[\s\-\[]|$)`)
+
+// parseEpisodeNum extracts the episode number from a torrent title.
+// Returns -1 if no episode number found (e.g., batch releases).
+func parseEpisodeNum(title string) int {
+	m := reEpisodeNum.FindStringSubmatch(title)
+	if m == nil {
+		return -1
+	}
+	numStr := m[1]
+	if numStr == "" {
+		numStr = m[2]
+	}
+	// Avoid matching years like 2024, 1080, etc.
+	if len(numStr) == 4 {
+		return -1
+	}
+	n := 0
+	for _, c := range numStr {
+		n = n*10 + int(c-'0')
+	}
+	if n == 0 || n > 999 {
+		return -1
+	}
+	return n
+}
+
+// episodeExistsInLibrary checks if an episode file matching the given episode number
+// already exists in the library destination for the rule's show/season.
+func (p *Poller) episodeExistsInLibrary(rule models.RSSRule, episodeNum int) bool {
+	if p.MediaDir == nil && p.MoviesDir == nil {
+		return false
+	}
+
+	var destDir string
+	if rule.MediaType == "movie" {
+		if p.MoviesDir == nil {
+			return false
+		}
+		destDir = filepath.Join(p.MoviesDir(), rule.ShowName)
+	} else {
+		if p.MediaDir == nil {
+			return false
+		}
+		destDir = filepath.Join(p.MediaDir(), rule.ShowName, fmt.Sprintf("Season %d", rule.Season))
+	}
+
+	entries, err := os.ReadDir(destDir)
+	if err != nil {
+		return false // dir doesn't exist = episode doesn't exist
+	}
+
+	// Build pattern to match episode number in filenames
+	// Matches: E05, E5, S01E05, - 05, etc.
+	epPattern := regexp.MustCompile(fmt.Sprintf(`(?i)(?:E0*%d|(?:^|[\s\-])0*%d(?:[\s\-\.\[]|$))`, episodeNum, episodeNum))
+
+	for _, e := range entries {
+		if !e.IsDir() && scanner.IsVideo(e.Name()) {
+			if epPattern.MatchString(e.Name()) {
+				return true
+			}
+		}
+	}
+
+	return false
 }
 
 // --- Database helpers ---
