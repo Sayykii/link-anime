@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"syscall"
 
 	"link-anime/internal/models"
 )
@@ -130,6 +131,7 @@ func ScanMovies(moviesDir string) ([]models.Movie, error) {
 }
 
 // ScanDownloads returns all downloadable items (folders + loose video files).
+// Each item includes a Linked flag based on whether its video files have hardlink count > 1.
 func ScanDownloads(downloadDir string) ([]models.DownloadItem, error) {
 	entries, err := os.ReadDir(downloadDir)
 	if err != nil {
@@ -152,6 +154,7 @@ func ScanDownloads(downloadDir string) ([]models.DownloadItem, error) {
 				IsDir:      true,
 				VideoCount: vc,
 				Size:       size,
+				Linked:     hasLinkedVideos(fullPath),
 			})
 		} else if IsVideo(entry.Name()) {
 			info, err := entry.Info()
@@ -164,6 +167,7 @@ func ScanDownloads(downloadDir string) ([]models.DownloadItem, error) {
 				IsDir:      false,
 				VideoCount: 1,
 				Size:       info.Size(),
+				Linked:     isFileLinked(fullPath),
 			})
 		}
 	}
@@ -173,6 +177,31 @@ func ScanDownloads(downloadDir string) ([]models.DownloadItem, error) {
 	})
 
 	return items, nil
+}
+
+// isFileLinked checks if a file has hardlink count > 1.
+func isFileLinked(path string) bool {
+	var stat syscall.Stat_t
+	if err := syscall.Stat(path, &stat); err != nil {
+		return false
+	}
+	return stat.Nlink > 1
+}
+
+// hasLinkedVideos checks if any video file in a directory has hardlink count > 1.
+func hasLinkedVideos(dir string) bool {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return false
+	}
+	for _, e := range entries {
+		if !e.IsDir() && IsVideo(e.Name()) {
+			if isFileLinked(filepath.Join(dir, e.Name())) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // LibrarySize calculates total video file size across media + movies dirs.

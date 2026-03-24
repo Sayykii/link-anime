@@ -51,7 +51,7 @@ function getLinkedEntry(downloadName: string): LinkedSource | undefined {
 const filteredSources = computed(() => {
   let items = downloads.value
   if (!showLinked.value) {
-    items = items.filter(d => !getLinkedEntry(d.name))
+    items = items.filter(d => !d.linked)
   }
   if (!sourceFilter.value) return items
   const q = sourceFilter.value.toLowerCase().replace(/[.\-_ ]+/g, ' ')
@@ -403,7 +403,7 @@ function reset() {
             :key="item.path"
             class="flex w-full items-center gap-3 rounded-lg border p-3 transition-colors"
             :class="[
-              getLinkedEntry(item.name) ? 'border-green-500/30 bg-green-500/5' : '',
+              item.linked ? 'border-green-500/30 bg-green-500/5' : '',
               selectedSources.has(item.path) ? 'ring-2 ring-primary border-primary' : '',
             ]"
           >
@@ -419,12 +419,12 @@ function reset() {
               class="flex items-center gap-3 min-w-0 flex-1 text-left hover:opacity-80"
               @click="selectSource(item)"
             >
-              <FolderOpen v-if="item.isDir" class="h-5 w-5 shrink-0" :class="getLinkedEntry(item.name) ? 'text-green-500' : 'text-muted-foreground'" />
-              <FileVideo v-else class="h-5 w-5 shrink-0" :class="getLinkedEntry(item.name) ? 'text-green-500' : 'text-muted-foreground'" />
+              <FolderOpen v-if="item.isDir" class="h-5 w-5 shrink-0" :class="item.linked ? 'text-green-500' : 'text-muted-foreground'" />
+              <FileVideo v-else class="h-5 w-5 shrink-0" :class="item.linked ? 'text-green-500' : 'text-muted-foreground'" />
               <div class="min-w-0 flex-1">
                 <div class="flex items-center gap-2">
                   <span class="truncate font-medium">{{ item.name }}</span>
-                  <Badge v-if="getLinkedEntry(item.name)" variant="outline" class="shrink-0 gap-1 text-green-600 border-green-500/30 text-xs">
+                  <Badge v-if="item.linked" variant="outline" class="shrink-0 gap-1 text-green-600 border-green-500/30 text-xs">
                     <CheckCircle class="h-3 w-3" />
                     Linked
                   </Badge>

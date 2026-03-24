@@ -505,14 +505,14 @@ function torrentStateVariant(state: string): 'default' | 'secondary' | 'outline'
                 v-for="item in filteredDownloads"
                 :key="item.path"
                 class="flex items-center gap-3 rounded-lg border p-3"
-                :class="getLinkedEntry(item.name) ? 'border-green-500/30 bg-green-500/5' : ''"
+                :class="item.linked ? 'border-green-500/30 bg-green-500/5' : ''"
               >
-                <FolderOpen v-if="item.isDir" class="h-5 w-5 shrink-0" :class="getLinkedEntry(item.name) ? 'text-green-500' : 'text-muted-foreground'" />
-                <FileVideo v-else class="h-5 w-5 shrink-0" :class="getLinkedEntry(item.name) ? 'text-green-500' : 'text-muted-foreground'" />
+                <FolderOpen v-if="item.isDir" class="h-5 w-5 shrink-0" :class="item.linked ? 'text-green-500' : 'text-muted-foreground'" />
+                <FileVideo v-else class="h-5 w-5 shrink-0" :class="item.linked ? 'text-green-500' : 'text-muted-foreground'" />
                 <div class="min-w-0 flex-1">
                   <div class="flex items-center gap-2">
                     <span class="truncate font-medium">{{ item.name }}</span>
-                    <Badge v-if="getLinkedEntry(item.name)" variant="outline" class="shrink-0 gap-1 text-green-600 border-green-500/30 text-xs">
+                    <Badge v-if="item.linked" variant="outline" class="shrink-0 gap-1 text-green-600 border-green-500/30 text-xs">
                       <CheckCircle class="h-3 w-3" />
                       Linked
                     </Badge>
@@ -527,12 +527,12 @@ function torrentStateVariant(state: string): 'default' | 'secondary' | 'outline'
                 </div>
                 <Button
                   size="sm"
-                  :variant="getLinkedEntry(item.name) ? 'ghost' : 'outline'"
+                  :variant="item.linked ? 'ghost' : 'outline'"
                   @click="goToLink(item.name)"
                   class="gap-1 shrink-0"
                 >
                   <Link class="h-3 w-3" />
-                  {{ getLinkedEntry(item.name) ? 'Re-link' : 'Link' }}
+                  {{ item.linked ? 'Re-link' : 'Link' }}
                 </Button>
               </div>
             </div>

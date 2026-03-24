@@ -31,6 +31,7 @@ type DownloadItem struct {
 	IsDir      bool   `json:"isDir"`
 	VideoCount int    `json:"videoCount"`
 	Size       int64  `json:"size"`
+	Linked     bool   `json:"linked"`
 }
 
 // LinkRequest is the payload for creating hardlinks.

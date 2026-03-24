@@ -25,6 +25,7 @@ export interface DownloadItem {
   isDir: boolean
   videoCount: number
   size: number
+  linked: boolean
 }
 
 export interface LinkRequest {
