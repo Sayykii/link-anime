@@ -53,18 +53,17 @@ func (s *Server) handleLink(w http.ResponseWriter, r *http.Request) {
 		}, "green")
 	}
 
-	// Trigger targeted Shoko scan if configured
-	log.Printf("[link] result: linked=%d skipped=%d failed=%d dryRun=%v shoko=%v shokoConfigured=%v destDir=%s",
+	// Trigger Shoko to import new files (only processes files it hasn't seen yet)
+	log.Printf("[link] result: linked=%d skipped=%d failed=%d dryRun=%v shoko=%v shokoConfigured=%v",
 		result.Linked, result.Skipped, result.Failed, req.DryRun,
-		s.Shoko != nil, s.Shoko != nil && s.Shoko.IsConfigured(), result.DestDir)
+		s.Shoko != nil, s.Shoko != nil && s.Shoko.IsConfigured())
 	if s.Shoko != nil && s.Shoko.IsConfigured() && result.Linked > 0 && !req.DryRun {
-		destDir := result.DestDir
 		go func() {
-			log.Printf("[shoko] Triggering targeted scan for: %s (dest: %s)", req.Name, destDir)
-			if err := s.Shoko.ScanImportFolderByPath(destDir); err != nil {
-				log.Printf("[shoko] Scan failed: %v", err)
+			log.Printf("[shoko] Triggering import of new files for: %s", req.Name)
+			if err := s.Shoko.ImportNewFiles(); err != nil {
+				log.Printf("[shoko] Import new files failed: %v", err)
 			} else {
-				log.Printf("[shoko] Scan triggered successfully")
+				log.Printf("[shoko] Import new files triggered successfully")
 			}
 		}()
 	}

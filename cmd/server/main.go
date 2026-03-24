@@ -95,11 +95,11 @@ func main() {
 		DownloadDir: func() string { return settingOr("download_dir", cfg.DownloadDir) },
 		MediaDir:    func() string { return settingOr("media_dir", cfg.MediaDir) },
 		MoviesDir:   func() string { return settingOr("movies_dir", cfg.MoviesDir) },
-		ShokoScan: func(destDir string) {
+		ShokoScan: func() {
 			if server.Shoko != nil && server.Shoko.IsConfigured() {
-				log.Printf("[autolink] triggering targeted Shoko scan for: %s", destDir)
-				if err := server.Shoko.ScanImportFolderByPath(destDir); err != nil {
-					log.Printf("[autolink] Shoko scan failed: %v", err)
+				log.Printf("[autolink] triggering Shoko import of new files")
+				if err := server.Shoko.ImportNewFiles(); err != nil {
+					log.Printf("[autolink] Shoko import new files failed: %v", err)
 				}
 			}
 		},

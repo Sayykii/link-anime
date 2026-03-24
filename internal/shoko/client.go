@@ -55,9 +55,29 @@ func (c *Client) doRequest(method, path string, body interface{}) (*http.Respons
 	return c.client.Do(req)
 }
 
-// ScanImportFolder triggers a scan of import folders in Shoko.
-// This is the primary integration point — after linking files into the library,
-// we tell Shoko to rescan so it picks up the new episodes.
+// ImportNewFiles triggers Shoko to import only new/unrecognized files.
+// This is much faster than a full scan since it skips files Shoko already knows about.
+func (c *Client) ImportNewFiles() error {
+	if !c.IsConfigured() {
+		return fmt.Errorf("shoko not configured")
+	}
+
+	resp, err := c.doRequest("GET", "/api/v3/Action/ImportNewFiles", nil)
+	if err != nil {
+		return fmt.Errorf("shoko import new files: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("shoko import new files failed (status %d): %s", resp.StatusCode, string(body))
+	}
+
+	return nil
+}
+
+// ScanImportFolder triggers a full scan of a specific import folder in Shoko.
+// This checks ALL files — prefer ImportNewFiles() for post-link scanning.
 func (c *Client) ScanImportFolder(folderID int) error {
 	if !c.IsConfigured() {
 		return fmt.Errorf("shoko not configured")
@@ -77,13 +97,12 @@ func (c *Client) ScanImportFolder(folderID int) error {
 	return nil
 }
 
-// ScanAllImportFolders triggers a scan of all import folders.
+// ScanAllImportFolders triggers a full scan of all import folders.
 func (c *Client) ScanAllImportFolders() error {
 	if !c.IsConfigured() {
 		return fmt.Errorf("shoko not configured")
 	}
 
-	// Get list of import folders
 	folders, err := c.GetImportFolders()
 	if err != nil {
 		return err
@@ -95,35 +114,6 @@ func (c *Client) ScanAllImportFolders() error {
 		}
 	}
 
-	return nil
-}
-
-// ScanImportFolderByPath finds the import folder that contains destPath and scans only that one.
-// Falls back to scanning all folders if no match is found.
-func (c *Client) ScanImportFolderByPath(destPath string) error {
-	if !c.IsConfigured() {
-		return fmt.Errorf("shoko not configured")
-	}
-
-	folders, err := c.GetImportFolders()
-	if err != nil {
-		return err
-	}
-
-	// Find the import folder whose path is a prefix of destPath
-	for _, f := range folders {
-		folderPath := strings.TrimRight(f.Path, "/")
-		if strings.HasPrefix(destPath, folderPath) {
-			return c.ScanImportFolder(f.ID)
-		}
-	}
-
-	// No match — fall back to scanning all
-	for _, f := range folders {
-		if err := c.ScanImportFolder(f.ID); err != nil {
-			return fmt.Errorf("scan folder %d (%s): %w", f.ID, f.Name, err)
-		}
-	}
 	return nil
 }
 
