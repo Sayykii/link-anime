@@ -61,6 +61,9 @@ export function useApi() {
     undoPreview: () => request<{ preview: UnlinkPreview; entry: HistoryEntry }>('GET', '/link/undo/preview'),
     undo: (force = false) => request<{ result: LinkResult; entry: HistoryEntry }>('POST', '/link/undo', { force }),
 
+    // Linked sources (reliable detection based on actual file paths)
+    getLinkedSources: () => request<Record<string, { id: number; mediaType: string; showName: string; season?: number }>>('GET', '/link/linked-sources'),
+
     // History
     getHistory: (limit = 50) => request<HistoryEntry[]>('GET', `/history?limit=${limit}`),
 

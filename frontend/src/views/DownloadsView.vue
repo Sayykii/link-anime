@@ -4,7 +4,7 @@ import { useApi } from '@/composables/useApi'
 import { useWebSocket } from '@/composables/useWebSocket'
 import { useRouter } from 'vue-router'
 import { formatSize } from '@/lib/utils'
-import type { DownloadItem, TorrentStatus, NyaaResult, TorrentProgress, HistoryEntry } from '@/lib/types'
+import type { DownloadItem, TorrentStatus, NyaaResult, TorrentProgress } from '@/lib/types'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -98,31 +98,15 @@ const localTypeFilter = ref('all') // 'all' | 'folders' | 'files'
 const torrentSort = ref('name')
 const torrentStatusFilter = ref('all') // 'all' | 'downloading' | 'seeding' | 'paused' | 'completed'
 
-// Linked file detection
-const history = ref<HistoryEntry[]>([])
+// Linked file detection (based on actual file paths, not name matching)
+type LinkedSource = { id: number; mediaType: string; showName: string; season?: number }
+const linkedSources = ref<Record<string, LinkedSource>>({})
 
-/** Normalize a name for matching: lowercase, collapse dots/spaces/underscores/dashes */
-function normalizeName(s: string): string {
-  return s.toLowerCase().replace(/[.\-_ ]+/g, ' ').trim()
+function getLinkedEntry(downloadName: string): LinkedSource | undefined {
+  return linkedSources.value[downloadName]
 }
 
-/** Map of normalized source name -> HistoryEntry for linked detection */
-const linkedMap = computed(() => {
-  const map = new Map<string, HistoryEntry>()
-  for (const entry of history.value) {
-    if (entry.source) {
-      map.set(normalizeName(entry.source), entry)
-    }
-  }
-  return map
-})
-
-/** Look up whether a download item has been linked, returns the history entry or undefined */
-function getLinkedEntry(downloadName: string): HistoryEntry | undefined {
-  return linkedMap.value.get(normalizeName(downloadName))
-}
-
-function linkedLabel(entry: HistoryEntry): string {
+function linkedLabel(entry: LinkedSource): string {
   if (entry.mediaType === 'movie') return entry.showName
   const season = entry.season != null ? ` S${entry.season}` : ''
   return `${entry.showName}${season}`
@@ -240,12 +224,12 @@ watch(activeTab, (val) => {
 async function loadDownloads() {
   loadingDownloads.value = true
   try {
-    const [dl, hist] = await Promise.all([
+    const [dl, linked] = await Promise.all([
       api.getDownloads(),
-      api.getHistory(1000),
+      api.getLinkedSources(),
     ])
     downloads.value = dl
-    history.value = hist
+    linkedSources.value = linked
   } catch (e: unknown) {
     toast.error(e instanceof Error ? e.message : 'Failed to load downloads')
   } finally {

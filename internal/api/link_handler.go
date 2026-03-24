@@ -133,6 +133,16 @@ func (s *Server) handleUnlink(w http.ResponseWriter, r *http.Request) {
 	jsonOK(w, result)
 }
 
+func (s *Server) handleLinkedSources(w http.ResponseWriter, r *http.Request) {
+	downloadDir := s.getDownloadDir()
+	result, err := linker.GetLinkedSourceDirs(downloadDir)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	jsonOK(w, result)
+}
+
 func (s *Server) handleUndoPreview(w http.ResponseWriter, r *http.Request) {
 	preview, entry, err := linker.UndoPreview()
 	if err != nil {

@@ -508,6 +508,63 @@ func GetHistory(limit int) ([]models.HistoryEntry, error) {
 	return entries, nil
 }
 
+// GetLinkedSourceDirs returns a map of download directory paths that have linked files,
+// along with the associated history entry info. This uses actual source_path data from
+// linked_files rather than the history source name, so it's reliable even when names differ.
+func GetLinkedSourceDirs(downloadDir string) (map[string]HistoryEntry, error) {
+	rows, err := database.DB.Query(`
+		SELECT DISTINCT
+			lf.source_path,
+			h.id, h.media_type, h.show_name, h.season
+		FROM linked_files lf
+		JOIN history h ON h.id = lf.history_id
+		ORDER BY h.id DESC
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := make(map[string]HistoryEntry)
+	for rows.Next() {
+		var sourcePath string
+		var entry HistoryEntry
+		var seasonVal sql.NullInt64
+		if err := rows.Scan(&sourcePath, &entry.ID, &entry.MediaType, &entry.ShowName, &seasonVal); err != nil {
+			continue
+		}
+		if seasonVal.Valid {
+			s := int(seasonVal.Int64)
+			entry.Season = &s
+		}
+
+		// Extract the top-level download directory name from the source path
+		// e.g. /downloads/Some.Anime.S01/ep01.mkv -> "Some.Anime.S01"
+		rel, err := filepath.Rel(downloadDir, sourcePath)
+		if err != nil {
+			continue
+		}
+		// Get the first path component (the download folder name)
+		parts := strings.SplitN(rel, string(filepath.Separator), 2)
+		dirName := parts[0]
+
+		// Only add if not already present (we want the most recent entry)
+		if _, exists := result[dirName]; !exists {
+			result[dirName] = entry
+		}
+	}
+
+	return result, nil
+}
+
+// HistoryEntry is a lightweight struct for linked source lookups.
+type HistoryEntry struct {
+	ID        int64  `json:"id"`
+	MediaType string `json:"mediaType"`
+	ShowName  string `json:"showName"`
+	Season    *int   `json:"season,omitempty"`
+}
+
 // --- helpers ---
 
 func resolveSource(source, downloadDir string) (string, error) {

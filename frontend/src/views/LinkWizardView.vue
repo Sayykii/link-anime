@@ -5,7 +5,7 @@ import { useWebSocket } from '@/composables/useWebSocket'
 import { useLibraryStore } from '@/stores/library'
 import { formatSize } from '@/lib/utils'
 import { useRoute, useRouter } from 'vue-router'
-import type { DownloadItem, LinkResult, LinkProgress, HistoryEntry } from '@/lib/types'
+import type { DownloadItem, LinkResult, LinkProgress } from '@/lib/types'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -40,25 +40,12 @@ const isBulkMode = computed(() => bulkQueue.value.length > 1)
 const bulkTotal = computed(() => bulkQueue.value.length)
 const bulkCurrent = computed(() => bulkIndex.value + 1)
 
-// Linked file detection
-const history = ref<HistoryEntry[]>([])
+// Linked file detection (based on actual file paths, not name matching)
+type LinkedSource = { id: number; mediaType: string; showName: string; season?: number }
+const linkedSources = ref<Record<string, LinkedSource>>({})
 
-function normalizeName(s: string): string {
-  return s.toLowerCase().replace(/[.\-_ ]+/g, ' ').trim()
-}
-
-const linkedMap = computed(() => {
-  const map = new Map<string, HistoryEntry>()
-  for (const entry of history.value) {
-    if (entry.source) {
-      map.set(normalizeName(entry.source), entry)
-    }
-  }
-  return map
-})
-
-function getLinkedEntry(downloadName: string): HistoryEntry | undefined {
-  return linkedMap.value.get(normalizeName(downloadName))
+function getLinkedEntry(downloadName: string): LinkedSource | undefined {
+  return linkedSources.value[downloadName]
 }
 
 const filteredSources = computed(() => {
@@ -155,12 +142,12 @@ on('link:complete', (data) => {
 async function loadDownloads() {
   loading.value = true
   try {
-    const [dl, hist] = await Promise.all([
+    const [dl, linked] = await Promise.all([
       api.getDownloads(),
-      api.getHistory(1000),
+      api.getLinkedSources(),
     ])
     downloads.value = dl
-    history.value = hist
+    linkedSources.value = linked
   } catch (e: unknown) {
     toast.error(e instanceof Error ? e.message : 'Failed to load downloads')
   } finally {
