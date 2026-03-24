@@ -305,7 +305,7 @@ async function executeUnlink(force: boolean) {
               </div>
 
               <!-- Title -->
-              <p class="text-sm font-medium leading-tight line-clamp-2 group-hover:text-primary transition-colors">
+              <p class="text-sm font-medium leading-tight line-clamp-2 min-h-[2.5rem] group-hover:text-primary transition-colors">
                 {{ series.Name }}
               </p>
               <p v-if="series.AniDB?.Type" class="text-xs text-muted-foreground mt-0.5">{{ series.AniDB.Type }}</p>
@@ -366,7 +366,7 @@ async function executeUnlink(force: boolean) {
                 </div>
               </div>
               <div class="flex items-start justify-between gap-1">
-                <p class="text-sm font-medium leading-tight line-clamp-2">{{ movie.name }}</p>
+                <p class="text-sm font-medium leading-tight line-clamp-2 min-h-[2.5rem]">{{ movie.name }}</p>
                 <Button
                   variant="ghost"
                   size="icon"
