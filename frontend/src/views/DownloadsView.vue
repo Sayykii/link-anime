@@ -96,6 +96,7 @@ const searchQuery = ref('')
 const localSort = ref('name-asc')
 const localTypeFilter = ref('all') // 'all' | 'folders' | 'files'
 const torrentSort = ref('name')
+const torrentStatusFilter = ref('all') // 'all' | 'downloading' | 'seeding' | 'paused' | 'completed'
 
 // Linked file detection
 const history = ref<HistoryEntry[]>([])
@@ -165,10 +166,22 @@ const filteredDownloads = computed(() => {
   return sorted
 })
 
+function torrentMatchesStatus(state: string, filter: string): boolean {
+  if (filter === 'all') return true
+  if (filter === 'downloading') return state === 'downloading' || state === 'stalledDL' || state === 'queuedDL' || state === 'checkingDL'
+  if (filter === 'seeding') return state === 'uploading' || state === 'stalledUP'
+  if (filter === 'paused') return state === 'pausedDL' || state === 'pausedUP'
+  if (filter === 'error') return state === 'error'
+  return true
+}
+
 const filteredTorrents = computed(() => {
   let items = torrents.value
   if (searchQuery.value) {
     items = items.filter(t => matchesFilter(t.name, searchQuery.value))
+  }
+  if (torrentStatusFilter.value !== 'all') {
+    items = items.filter(t => torrentMatchesStatus(t.state, torrentStatusFilter.value))
   }
   const sorted = [...items]
   switch (torrentSort.value) {
@@ -439,6 +452,24 @@ function torrentStateVariant(state: string): 'default' | 'secondary' | 'outline'
         </div>
 
         <div v-if="activeTab === 'torrents'" class="flex items-center gap-2">
+          <div class="flex rounded-md border">
+            <Button
+              v-for="opt in [
+                { value: 'all', label: 'All' },
+                { value: 'downloading', label: 'Downloading' },
+                { value: 'seeding', label: 'Seeding' },
+                { value: 'paused', label: 'Paused' },
+                { value: 'error', label: 'Error' },
+              ]"
+              :key="opt.value"
+              :variant="torrentStatusFilter === opt.value ? 'default' : 'ghost'"
+              size="sm"
+              class="rounded-none first:rounded-l-md last:rounded-r-md h-8 px-3 text-xs"
+              @click="torrentStatusFilter = opt.value"
+            >
+              {{ opt.label }}
+            </Button>
+          </div>
           <Select v-model="torrentSort">
             <SelectTrigger class="w-40 h-8 text-xs">
               <ArrowUpDown class="h-3 w-3 mr-1 text-muted-foreground" />

@@ -5,7 +5,7 @@ import { useWebSocket } from '@/composables/useWebSocket'
 import { useLibraryStore } from '@/stores/library'
 import { formatSize } from '@/lib/utils'
 import { useRoute, useRouter } from 'vue-router'
-import type { DownloadItem, LinkResult, LinkProgress } from '@/lib/types'
+import type { DownloadItem, LinkResult, LinkProgress, HistoryEntry } from '@/lib/types'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -14,7 +14,7 @@ import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { Progress } from '@/components/ui/progress'
 import { toast } from 'vue-sonner'
-import { FolderOpen, FileVideo, Link, ArrowRight, Check, Loader2, Tv, Search, X } from 'lucide-vue-next'
+import { FolderOpen, FileVideo, Link, ArrowRight, Check, Loader2, Tv, Search, X, Eye, EyeOff, CheckCircle } from 'lucide-vue-next'
 
 const api = useApi()
 const library = useLibraryStore()
@@ -30,10 +30,45 @@ const loading = ref(false)
 const downloads = ref<DownloadItem[]>([])
 const selectedSource = ref<DownloadItem | null>(null)
 const sourceFilter = ref('')
+const showLinked = ref(false)
+
+// Bulk link queue
+const selectedSources = ref<Set<string>>(new Set())
+const bulkQueue = ref<DownloadItem[]>([])
+const bulkIndex = ref(0)
+const isBulkMode = computed(() => bulkQueue.value.length > 1)
+const bulkTotal = computed(() => bulkQueue.value.length)
+const bulkCurrent = computed(() => bulkIndex.value + 1)
+
+// Linked file detection
+const history = ref<HistoryEntry[]>([])
+
+function normalizeName(s: string): string {
+  return s.toLowerCase().replace(/[.\-_ ]+/g, ' ').trim()
+}
+
+const linkedMap = computed(() => {
+  const map = new Map<string, HistoryEntry>()
+  for (const entry of history.value) {
+    if (entry.source) {
+      map.set(normalizeName(entry.source), entry)
+    }
+  }
+  return map
+})
+
+function getLinkedEntry(downloadName: string): HistoryEntry | undefined {
+  return linkedMap.value.get(normalizeName(downloadName))
+}
+
 const filteredSources = computed(() => {
-  if (!sourceFilter.value) return downloads.value
+  let items = downloads.value
+  if (!showLinked.value) {
+    items = items.filter(d => !getLinkedEntry(d.name))
+  }
+  if (!sourceFilter.value) return items
   const q = sourceFilter.value.toLowerCase().replace(/[.\-_ ]+/g, ' ')
-  return downloads.value.filter(d =>
+  return items.filter(d =>
     d.name.toLowerCase().replace(/[.\-_ ]+/g, ' ').includes(q)
   )
 })
@@ -120,7 +155,12 @@ on('link:complete', (data) => {
 async function loadDownloads() {
   loading.value = true
   try {
-    downloads.value = await api.getDownloads()
+    const [dl, hist] = await Promise.all([
+      api.getDownloads(),
+      api.getHistory(1000),
+    ])
+    downloads.value = dl
+    history.value = hist
   } catch (e: unknown) {
     toast.error(e instanceof Error ? e.message : 'Failed to load downloads')
   } finally {
@@ -128,7 +168,32 @@ async function loadDownloads() {
   }
 }
 
+function toggleSource(item: DownloadItem) {
+  const set = new Set(selectedSources.value)
+  if (set.has(item.path)) {
+    set.delete(item.path)
+  } else {
+    set.add(item.path)
+  }
+  selectedSources.value = set
+}
+
+function startLinking() {
+  const queue = downloads.value.filter(d => selectedSources.value.has(d.path))
+  if (queue.length === 0) return
+  bulkQueue.value = queue
+  bulkIndex.value = 0
+  beginSource(queue[0])
+}
+
 function selectSource(item: DownloadItem) {
+  bulkQueue.value = [item]
+  bulkIndex.value = 0
+  selectedSources.value = new Set([item.path])
+  beginSource(item)
+}
+
+function beginSource(item: DownloadItem) {
   selectedSource.value = item
   parseName(item.name)
   step.value = 2
@@ -207,6 +272,24 @@ async function executeLink() {
   }
 }
 
+function nextInQueue() {
+  const nextIdx = bulkIndex.value + 1
+  if (nextIdx < bulkQueue.value.length) {
+    bulkIndex.value = nextIdx
+    mediaType.value = 'series'
+    showName.value = ''
+    seasonNumber.value = 1
+    previewResult.value = null
+    linkProgress.value = []
+    finalResult.value = null
+    progressPercent.value = 0
+    showSearch.value = ''
+    beginSource(bulkQueue.value[nextIdx])
+  }
+}
+
+const hasMoreInQueue = computed(() => bulkIndex.value + 1 < bulkQueue.value.length)
+
 function reset() {
   step.value = 1
   selectedSource.value = null
@@ -219,6 +302,9 @@ function reset() {
   progressPercent.value = 0
   showSearch.value = ''
   sourceFilter.value = ''
+  selectedSources.value = new Set()
+  bulkQueue.value = []
+  bulkIndex.value = 0
   loadDownloads()
 }
 </script>
@@ -228,6 +314,14 @@ function reset() {
     <div>
       <h1 class="font-display text-3xl tracking-wider uppercase">Link Wizard</h1>
       <p class="text-muted-foreground text-sm mt-1">Hardlink anime from downloads to your media library</p>
+    </div>
+
+    <!-- Bulk queue indicator -->
+    <div v-if="isBulkMode && step > 1" class="flex items-center gap-2 text-sm">
+      <Badge variant="secondary" class="gap-1">
+        {{ bulkCurrent }} / {{ bulkTotal }}
+      </Badge>
+      <span class="text-muted-foreground">{{ selectedSource?.name }}</span>
     </div>
 
     <!-- Step indicator -->
@@ -263,9 +357,19 @@ function reset() {
 
     <!-- Step 1: Select source -->
     <Card v-if="step === 1" glass>
-      <CardHeader>
-        <CardTitle>Select Source</CardTitle>
-        <CardDescription>Choose a download to link into your library</CardDescription>
+      <CardHeader class="flex flex-row items-center justify-between">
+        <div>
+          <CardTitle>Select Source</CardTitle>
+          <CardDescription>Choose downloads to link into your library</CardDescription>
+        </div>
+        <Button
+          v-if="selectedSources.size > 0"
+          @click="startLinking"
+          class="gap-2 shrink-0"
+        >
+          <Link class="h-4 w-4" />
+          Link {{ selectedSources.size }} selected
+        </Button>
       </CardHeader>
       <CardContent>
         <div v-if="loading" class="flex items-center gap-2 text-muted-foreground py-8 justify-center">
@@ -276,17 +380,29 @@ function reset() {
           No downloads found in the download directory
         </div>
         <template v-else>
-          <!-- Source filter (shown when more than 5 downloads) -->
-          <div v-if="downloads.length > 5" class="relative mb-3">
-            <Search class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input v-model="sourceFilter" placeholder="Filter downloads..." class="pl-9 h-9" />
-            <button
-              v-if="sourceFilter"
-              class="absolute right-2.5 top-2.5 text-muted-foreground hover:text-foreground"
-              @click="sourceFilter = ''"
+          <!-- Source filter and linked toggle -->
+          <div class="flex items-center gap-2 mb-3">
+            <div v-if="downloads.length > 5" class="relative flex-1">
+              <Search class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input v-model="sourceFilter" placeholder="Filter downloads..." class="pl-9 h-9" />
+              <button
+                v-if="sourceFilter"
+                class="absolute right-2.5 top-2.5 text-muted-foreground hover:text-foreground"
+                @click="sourceFilter = ''"
+              >
+                <X class="h-4 w-4" />
+              </button>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              class="gap-1.5 shrink-0 h-9"
+              @click="showLinked = !showLinked"
             >
-              <X class="h-4 w-4" />
-            </button>
+              <Eye v-if="showLinked" class="h-3.5 w-3.5" />
+              <EyeOff v-else class="h-3.5 w-3.5" />
+              <span class="hidden sm:inline">{{ showLinked ? 'Showing linked' : 'Hiding linked' }}</span>
+            </Button>
           </div>
           <div v-if="sourceFilter && !filteredSources.length" class="text-center text-muted-foreground py-8">
             No downloads matching "{{ sourceFilter }}"
@@ -295,22 +411,44 @@ function reset() {
             </div>
           </div>
         <div v-else class="space-y-2">
-          <button
+          <div
             v-for="item in filteredSources"
             :key="item.path"
-            class="flex w-full items-center gap-3 rounded-lg border p-3 text-left hover:bg-accent transition-colors"
-            @click="selectSource(item)"
+            class="flex w-full items-center gap-3 rounded-lg border p-3 transition-colors"
+            :class="[
+              getLinkedEntry(item.name) ? 'border-green-500/30 bg-green-500/5' : '',
+              selectedSources.has(item.path) ? 'ring-2 ring-primary border-primary' : '',
+            ]"
           >
-            <FolderOpen v-if="item.isDir" class="h-5 w-5 text-muted-foreground shrink-0" />
-            <FileVideo v-else class="h-5 w-5 text-muted-foreground shrink-0" />
-            <div class="min-w-0 flex-1">
-              <div class="truncate font-medium">{{ item.name }}</div>
-              <div class="text-sm text-muted-foreground">
-                {{ item.videoCount }} video{{ item.videoCount !== 1 ? 's' : '' }}
-                &middot; {{ formatSize(item.size) }}
+            <!-- Checkbox for multi-select -->
+            <button
+              class="shrink-0 h-5 w-5 rounded border-2 flex items-center justify-center transition-colors"
+              :class="selectedSources.has(item.path) ? 'bg-primary border-primary text-primary-foreground' : 'border-muted-foreground/40 hover:border-primary'"
+              @click.stop="toggleSource(item)"
+            >
+              <Check v-if="selectedSources.has(item.path)" class="h-3 w-3" />
+            </button>
+            <button
+              class="flex items-center gap-3 min-w-0 flex-1 text-left hover:opacity-80"
+              @click="selectSource(item)"
+            >
+              <FolderOpen v-if="item.isDir" class="h-5 w-5 shrink-0" :class="getLinkedEntry(item.name) ? 'text-green-500' : 'text-muted-foreground'" />
+              <FileVideo v-else class="h-5 w-5 shrink-0" :class="getLinkedEntry(item.name) ? 'text-green-500' : 'text-muted-foreground'" />
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2">
+                  <span class="truncate font-medium">{{ item.name }}</span>
+                  <Badge v-if="getLinkedEntry(item.name)" variant="outline" class="shrink-0 gap-1 text-green-600 border-green-500/30 text-xs">
+                    <CheckCircle class="h-3 w-3" />
+                    Linked
+                  </Badge>
+                </div>
+                <div class="text-sm text-muted-foreground">
+                  {{ item.videoCount }} video{{ item.videoCount !== 1 ? 's' : '' }}
+                  &middot; {{ formatSize(item.size) }}
+                </div>
               </div>
-            </div>
-          </button>
+            </button>
+          </div>
         </div>
         </template>
       </CardContent>
@@ -571,7 +709,11 @@ function reset() {
         <Separator />
 
         <div class="flex gap-2">
-          <Button @click="reset">Link Another</Button>
+          <Button v-if="hasMoreInQueue" @click="nextInQueue" class="gap-2">
+            <ArrowRight class="h-4 w-4" />
+            Link Next ({{ bulkIndex + 2 }}/{{ bulkTotal }})
+          </Button>
+          <Button :variant="hasMoreInQueue ? 'outline' : 'default'" @click="reset">Link Another</Button>
           <Button variant="outline" @click="router.push('/library')">View Library</Button>
         </div>
       </CardContent>

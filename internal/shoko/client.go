@@ -98,6 +98,35 @@ func (c *Client) ScanAllImportFolders() error {
 	return nil
 }
 
+// ScanImportFolderByPath finds the import folder that contains destPath and scans only that one.
+// Falls back to scanning all folders if no match is found.
+func (c *Client) ScanImportFolderByPath(destPath string) error {
+	if !c.IsConfigured() {
+		return fmt.Errorf("shoko not configured")
+	}
+
+	folders, err := c.GetImportFolders()
+	if err != nil {
+		return err
+	}
+
+	// Find the import folder whose path is a prefix of destPath
+	for _, f := range folders {
+		folderPath := strings.TrimRight(f.Path, "/")
+		if strings.HasPrefix(destPath, folderPath) {
+			return c.ScanImportFolder(f.ID)
+		}
+	}
+
+	// No match — fall back to scanning all
+	for _, f := range folders {
+		if err := c.ScanImportFolder(f.ID); err != nil {
+			return fmt.Errorf("scan folder %d (%s): %w", f.ID, f.Name, err)
+		}
+	}
+	return nil
+}
+
 // ImportFolder represents a Shoko import folder.
 type ImportFolder struct {
 	ID   int    `json:"ID"`

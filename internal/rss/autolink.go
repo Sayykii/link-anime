@@ -17,7 +17,7 @@ type AutoLinker struct {
 	DownloadDir func() string
 	MediaDir    func() string
 	MoviesDir   func() string
-	ShokoScan   func() // trigger shoko scan if configured
+	ShokoScan   func(destDir string) // trigger targeted shoko scan for the given dest path
 }
 
 // HandleCompletion is called when the download monitor detects a completed torrent.
@@ -93,8 +93,8 @@ func (a *AutoLinker) HandleCompletion(t models.TorrentStatus) {
 		}, "green")
 	}
 
-	// Trigger Shoko scan
+	// Trigger targeted Shoko scan
 	if a.ShokoScan != nil {
-		go a.ShokoScan()
+		go a.ShokoScan(result.DestDir)
 	}
 }
