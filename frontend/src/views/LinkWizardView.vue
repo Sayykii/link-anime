@@ -40,7 +40,7 @@ const isBulkMode = computed(() => bulkQueue.value.length > 1)
 const bulkTotal = computed(() => bulkQueue.value.length)
 const bulkCurrent = computed(() => bulkIndex.value + 1)
 
-// Linked file detection (based on actual file paths, not name matching)
+// Linked file detection (uses file paths + history source name fallback)
 type LinkedSource = { id: number; mediaType: string; showName: string; season?: number }
 const linkedSources = ref<Record<string, LinkedSource>>({})
 

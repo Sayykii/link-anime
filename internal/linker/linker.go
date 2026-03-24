@@ -252,9 +252,18 @@ func writeHistory(req models.LinkRequest, result *models.LinkResult, sourcePath 
 		return err
 	}
 
+	// Determine if source is a file or directory for correct source_path construction
+	sourceInfo, _ := os.Stat(sourcePath)
+	sourceIsDir := sourceInfo != nil && sourceInfo.IsDir()
+
 	for _, f := range result.Files {
-		// Determine the source path for this linked file
-		srcFile := filepath.Join(sourcePath, filepath.Base(f))
+		var srcFile string
+		if sourceIsDir {
+			srcFile = filepath.Join(sourcePath, filepath.Base(f))
+		} else {
+			// Single file source — sourcePath is already the full file path
+			srcFile = sourcePath
+		}
 		_, err := database.DB.Exec(
 			`INSERT INTO linked_files (history_id, file_path, source_path) VALUES (?, ?, ?)`,
 			historyID, f, srcFile,
@@ -508,16 +517,21 @@ func GetHistory(limit int) ([]models.HistoryEntry, error) {
 	return entries, nil
 }
 
-// GetLinkedSourceDirs returns a map of download directory paths that have linked files,
-// along with the associated history entry info. This uses actual source_path data from
-// linked_files rather than the history source name, so it's reliable even when names differ.
-func GetLinkedSourceDirs(downloadDir string) (map[string]HistoryEntry, error) {
+// GetLinkedSourceDirs returns a map of download item names that have been linked,
+// along with the associated history entry info. Uses two strategies:
+// 1. Extract download dir names from linked_files.source_path (most accurate)
+// 2. Fall back to history.source name (for older entries with empty source_path)
+func GetLinkedSourceDirs(downloadDir string) (map[string]LinkedSourceEntry, error) {
+	result := make(map[string]LinkedSourceEntry)
+
+	// Strategy 1: from linked_files source paths
 	rows, err := database.DB.Query(`
 		SELECT DISTINCT
 			lf.source_path,
 			h.id, h.media_type, h.show_name, h.season
 		FROM linked_files lf
 		JOIN history h ON h.id = lf.history_id
+		WHERE lf.source_path != ''
 		ORDER BY h.id DESC
 	`)
 	if err != nil {
@@ -525,10 +539,9 @@ func GetLinkedSourceDirs(downloadDir string) (map[string]HistoryEntry, error) {
 	}
 	defer rows.Close()
 
-	result := make(map[string]HistoryEntry)
 	for rows.Next() {
 		var sourcePath string
-		var entry HistoryEntry
+		var entry LinkedSourceEntry
 		var seasonVal sql.NullInt64
 		if err := rows.Scan(&sourcePath, &entry.ID, &entry.MediaType, &entry.ShowName, &seasonVal); err != nil {
 			continue
@@ -538,27 +551,56 @@ func GetLinkedSourceDirs(downloadDir string) (map[string]HistoryEntry, error) {
 			entry.Season = &s
 		}
 
-		// Extract the top-level download directory name from the source path
-		// e.g. /downloads/Some.Anime.S01/ep01.mkv -> "Some.Anime.S01"
+		// Extract the top-level download item name from the source path
+		// For folders: /downloads/Some.Anime.S01/ep01.mkv -> "Some.Anime.S01"
+		// For files:   /downloads/ep01.mkv -> "ep01.mkv"
 		rel, err := filepath.Rel(downloadDir, sourcePath)
 		if err != nil {
 			continue
 		}
-		// Get the first path component (the download folder name)
 		parts := strings.SplitN(rel, string(filepath.Separator), 2)
 		dirName := parts[0]
 
-		// Only add if not already present (we want the most recent entry)
 		if _, exists := result[dirName]; !exists {
 			result[dirName] = entry
+		}
+	}
+
+	// Strategy 2: fall back to history.source for entries not covered above
+	rows2, err := database.DB.Query(`
+		SELECT id, media_type, show_name, season, source
+		FROM history
+		WHERE source != ''
+		ORDER BY id DESC
+	`)
+	if err != nil {
+		return result, nil // non-fatal, we already have some results
+	}
+	defer rows2.Close()
+
+	for rows2.Next() {
+		var entry LinkedSourceEntry
+		var seasonVal sql.NullInt64
+		var source string
+		if err := rows2.Scan(&entry.ID, &entry.MediaType, &entry.ShowName, &seasonVal, &source); err != nil {
+			continue
+		}
+		if seasonVal.Valid {
+			s := int(seasonVal.Int64)
+			entry.Season = &s
+		}
+
+		// Add the history source name directly (this is the name passed to the link request)
+		if _, exists := result[source]; !exists {
+			result[source] = entry
 		}
 	}
 
 	return result, nil
 }
 
-// HistoryEntry is a lightweight struct for linked source lookups.
-type HistoryEntry struct {
+// LinkedSourceEntry is a lightweight struct for linked source lookups.
+type LinkedSourceEntry struct {
 	ID        int64  `json:"id"`
 	MediaType string `json:"mediaType"`
 	ShowName  string `json:"showName"`
