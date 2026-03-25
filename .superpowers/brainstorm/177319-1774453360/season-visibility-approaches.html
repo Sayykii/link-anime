@@ -1,0 +1,160 @@
+<h2>How should existing seasons appear when linking?</h2>
+<p class="subtitle">When you select an existing show in Step 3, how should we surface what's already linked?</p>
+
+<div class="cards">
+  <!-- Approach A: Inline season pills in the show list -->
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">Existing Shows List</div>
+        <div class="mockup-body" style="padding: 0;">
+          <!-- Show entry -->
+          <div style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.1); background: rgba(139,92,246,0.08);">
+            <div style="width: 32px; height: 48px; border-radius: 4px; background: linear-gradient(135deg, #6366f1, #8b5cf6); flex-shrink: 0;"></div>
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-weight: 600; font-size: 14px; margin-bottom: 4px;">Attack on Titan</div>
+              <div style="display: flex; gap: 4px; flex-wrap: wrap;">
+                <span style="font-size: 11px; padding: 1px 8px; border-radius: 9999px; background: rgba(139,92,246,0.2); color: #c4b5fd;">S1 · 24ep</span>
+                <span style="font-size: 11px; padding: 1px 8px; border-radius: 9999px; background: rgba(139,92,246,0.2); color: #c4b5fd;">S2 · 12ep</span>
+                <span style="font-size: 11px; padding: 1px 8px; border-radius: 9999px; background: rgba(139,92,246,0.2); color: #c4b5fd;">S3 · 22ep</span>
+              </div>
+            </div>
+            <svg style="width:16px;height:16px;color:#8b5cf6;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          </div>
+          <!-- Another show -->
+          <div style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.1);">
+            <div style="width: 32px; height: 48px; border-radius: 4px; background: linear-gradient(135deg, #374151, #4b5563); flex-shrink: 0;"></div>
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-weight: 600; font-size: 14px; margin-bottom: 4px;">Vinland Saga</div>
+              <div style="display: flex; gap: 4px; flex-wrap: wrap;">
+                <span style="font-size: 11px; padding: 1px 8px; border-radius: 9999px; background: rgba(139,92,246,0.2); color: #c4b5fd;">S1 · 24ep</span>
+                <span style="font-size: 11px; padding: 1px 8px; border-radius: 9999px; background: rgba(139,92,246,0.2); color: #c4b5fd;">S2 · 24ep</span>
+              </div>
+            </div>
+          </div>
+          <!-- Season input below -->
+          <div style="padding: 12px; border-top: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.1);">
+            <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: rgba(255,255,255,0.5); margin-bottom: 6px;">Season Number</div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <div style="width: 80px; height: 36px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.2); display: flex; align-items: center; justify-content: center; color: #c4b5fd; font-weight: 600;">4</div>
+              <span style="font-size: 12px; color: rgba(255,255,255,0.4);">← Next available</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A: Inline Season Pills</h3>
+      <p>Season badges appear directly under each show name in the existing shows list. Compact, scannable at a glance. Season input auto-suggests the next available number.</p>
+    </div>
+  </div>
+
+  <!-- Approach B: Expand-on-select detail panel -->
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">Show Selected → Detail Expands</div>
+        <div class="mockup-body" style="padding: 0;">
+          <!-- Collapsed show -->
+          <div style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.1);">
+            <div style="width: 32px; height: 48px; border-radius: 4px; background: linear-gradient(135deg, #374151, #4b5563); flex-shrink: 0;"></div>
+            <span style="font-size: 14px; font-weight: 500;">Vinland Saga</span>
+          </div>
+          <!-- Expanded show -->
+          <div style="border-bottom: 1px solid rgba(255,255,255,0.1); background: rgba(139,92,246,0.05);">
+            <div style="display: flex; align-items: center; gap: 10px; padding: 10px 12px;">
+              <div style="width: 32px; height: 48px; border-radius: 4px; background: linear-gradient(135deg, #6366f1, #8b5cf6); flex-shrink: 0;"></div>
+              <span style="font-size: 14px; font-weight: 600;">Attack on Titan</span>
+              <svg style="width:16px;height:16px;color:#8b5cf6;margin-left:auto;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            </div>
+            <!-- Expanded season detail -->
+            <div style="padding: 0 12px 12px 54px;">
+              <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: rgba(255,255,255,0.4); margin-bottom: 8px;">Existing Seasons</div>
+              <div style="display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px;">
+                <div style="display: flex; justify-content: space-between; font-size: 13px; padding: 6px 10px; border-radius: 6px; background: rgba(255,255,255,0.05);">
+                  <span>Season 1</span><span style="color: rgba(255,255,255,0.5);">24 episodes</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 13px; padding: 6px 10px; border-radius: 6px; background: rgba(255,255,255,0.05);">
+                  <span>Season 2</span><span style="color: rgba(255,255,255,0.5);">12 episodes</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 13px; padding: 6px 10px; border-radius: 6px; background: rgba(255,255,255,0.05);">
+                  <span>Season 3</span><span style="color: rgba(255,255,255,0.5);">22 episodes</span>
+                </div>
+              </div>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: rgba(255,255,255,0.4);">Link as:</div>
+                <div style="width: 80px; height: 32px; border-radius: 6px; border: 1px solid rgba(139,92,246,0.4); background: rgba(0,0,0,0.2); display: flex; align-items: center; justify-content: center; color: #c4b5fd; font-weight: 600; font-size: 14px;">Season 4</div>
+              </div>
+            </div>
+          </div>
+          <!-- Another collapsed show -->
+          <div style="display: flex; align-items: center; gap: 10px; padding: 10px 12px;">
+            <div style="width: 32px; height: 48px; border-radius: 4px; background: linear-gradient(135deg, #374151, #4b5563); flex-shrink: 0;"></div>
+            <span style="font-size: 14px; font-weight: 500;">Jujutsu Kaisen</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B: Expand on Select</h3>
+      <p>Shows list stays clean. When you click a show, it expands inline to reveal season details and the season input — like an accordion. More detail without cluttering unselected shows.</p>
+    </div>
+  </div>
+
+  <!-- Approach C: Side panel / split view -->
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">Split: Show List + Season Detail</div>
+        <div class="mockup-body" style="padding: 0; display: flex; min-height: 220px;">
+          <!-- Left: show list -->
+          <div style="flex: 1; border-right: 1px solid rgba(255,255,255,0.1);">
+            <div style="display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-bottom: 1px solid rgba(255,255,255,0.1);">
+              <div style="width: 24px; height: 36px; border-radius: 3px; background: linear-gradient(135deg, #374151, #4b5563); flex-shrink: 0;"></div>
+              <span style="font-size: 12px;">Vinland Saga</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-bottom: 1px solid rgba(255,255,255,0.1); background: rgba(139,92,246,0.08);">
+              <div style="width: 24px; height: 36px; border-radius: 3px; background: linear-gradient(135deg, #6366f1, #8b5cf6); flex-shrink: 0;"></div>
+              <span style="font-size: 12px; font-weight: 600;">Attack on Titan</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px; padding: 8px 10px;">
+              <div style="width: 24px; height: 36px; border-radius: 3px; background: linear-gradient(135deg, #374151, #4b5563); flex-shrink: 0;"></div>
+              <span style="font-size: 12px;">Jujutsu Kaisen</span>
+            </div>
+          </div>
+          <!-- Right: season detail -->
+          <div style="flex: 1; padding: 12px;">
+            <div style="font-weight: 600; font-size: 14px; margin-bottom: 2px;">Attack on Titan</div>
+            <div style="font-size: 11px; color: rgba(255,255,255,0.4); margin-bottom: 10px;">3 seasons · 58 episodes</div>
+            <div style="display: flex; flex-direction: column; gap: 3px; margin-bottom: 12px;">
+              <div style="display: flex; justify-content: space-between; font-size: 12px; padding: 4px 8px; border-radius: 4px; background: rgba(255,255,255,0.05);">
+                <span>S1</span><span style="color: rgba(255,255,255,0.5);">24 ep</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; font-size: 12px; padding: 4px 8px; border-radius: 4px; background: rgba(255,255,255,0.05);">
+                <span>S2</span><span style="color: rgba(255,255,255,0.5);">12 ep</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; font-size: 12px; padding: 4px 8px; border-radius: 4px; background: rgba(255,255,255,0.05);">
+                <span>S3</span><span style="color: rgba(255,255,255,0.5);">22 ep</span>
+              </div>
+            </div>
+            <div style="font-size: 11px; color: rgba(255,255,255,0.4); margin-bottom: 4px;">Link as season:</div>
+            <div style="width: 64px; height: 30px; border-radius: 6px; border: 1px solid rgba(139,92,246,0.4); background: rgba(0,0,0,0.2); display: flex; align-items: center; justify-content: center; color: #c4b5fd; font-weight: 600; font-size: 13px;">4</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C: Split Panel</h3>
+      <p>Show list on the left, season detail on the right. Master-detail pattern. Shows the most info but takes more space — might feel heavy for a wizard step on mobile.</p>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top: 24px;">
+  <h3>All approaches include:</h3>
+  <ul style="font-size: 14px; color: rgba(255,255,255,0.7); line-height: 1.8;">
+    <li>Season number auto-fills to the next available (e.g., if S1-S3 exist → defaults to 4)</li>
+    <li>Episode counts per season so you can verify completeness</li>
+    <li>Works with the existing show data (Show.seasons is already available)</li>
+  </ul>
+</div>

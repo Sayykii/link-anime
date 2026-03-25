@@ -5,7 +5,7 @@ import { useWebSocket } from '@/composables/useWebSocket'
 import { useLibraryStore } from '@/stores/library'
 import { formatSize } from '@/lib/utils'
 import { useRoute, useRouter } from 'vue-router'
-import type { DownloadItem, LinkResult, LinkProgress } from '@/lib/types'
+import type { DownloadItem, LinkResult, LinkProgress, Show } from '@/lib/types'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -73,6 +73,7 @@ const suggestedSeason = ref<number | null>(null)
 const folderMap = ref<Record<string, { shokoId: number; name: string; posterUrl?: string }>>({})
 const shokoAvailable = ref(false)
 const showSearch = ref('')
+const selectedShow = ref<Show | null>(null)
 
 // Step 4/5: Preview & Progress
 const previewResult = ref<LinkResult | null>(null)
@@ -82,10 +83,8 @@ const progressPercent = ref(0)
 // Step 6: Final result
 const finalResult = ref<LinkResult | null>(null)
 
-// Existing shows/movies for selection
-const existingShows = computed(() => library.shows.map(s => s.name))
+// Existing movies for selection (series uses filteredExistingShows with full Show objects)
 const existingMovies = computed(() => library.movies.map(m => m.name))
-const existingItems = computed(() => mediaType.value === 'series' ? existingShows.value : existingMovies.value)
 
 // Get poster URL for a folder name via the folder map
 function findShokoPoster(folderName: string): string | null {
@@ -96,11 +95,33 @@ function findShokoPoster(folderName: string): string | null {
 // Current poster for the selected show name
 const currentPoster = computed(() => findShokoPoster(showName.value))
 
-// Filtered existing items based on search
+// Filtered existing movies based on search
 const filteredExistingItems = computed(() => {
-  if (!showSearch.value) return existingItems.value
+  if (!showSearch.value) return existingMovies.value
   const q = showSearch.value.toLowerCase()
-  return existingItems.value.filter(name => name.toLowerCase().includes(q))
+  return existingMovies.value.filter(name => name.toLowerCase().includes(q))
+})
+
+// Series-specific: returns full Show objects so template can access seasons
+const filteredExistingShows = computed(() => {
+  const shows = library.shows
+  if (!showSearch.value) return shows
+  const q = showSearch.value.toLowerCase()
+  return shows.filter(s => s.name.toLowerCase().includes(q))
+})
+
+// Next available season number for the selected show
+const nextAvailableSeason = computed(() => {
+  if (!selectedShow.value || !selectedShow.value.seasons.length) return null
+  return Math.max(...selectedShow.value.seasons.map(s => s.number)) + 1
+})
+
+// Warning when user enters a season number that already exists
+const duplicateSeasonWarning = computed(() => {
+  if (!selectedShow.value) return null
+  const existing = selectedShow.value.seasons.find(s => s.number === seasonNumber.value)
+  if (!existing) return null
+  return `Season ${existing.number} already exists (${existing.episodes} episodes)`
 })
 
 onMounted(async () => {
@@ -205,10 +226,23 @@ function selectType(type: 'series' | 'movie') {
   step.value = 3
 }
 
-function selectExistingShow(name: string) {
-  showName.value = name
+function selectExistingShow(show: Show) {
+  showName.value = show.name
+  selectedShow.value = show
   showSearch.value = ''
+  // Auto-fill season to next available
+  if (show.seasons.length > 0) {
+    const maxSeason = Math.max(...show.seasons.map(s => s.number))
+    seasonNumber.value = maxSeason + 1
+  }
 }
+
+// Clear selectedShow when user manually changes the name (so duplicate warning doesn't show stale data)
+watch(showName, (name) => {
+  if (selectedShow.value && name !== selectedShow.value.name) {
+    selectedShow.value = null
+  }
+})
 
 async function goToConfirm() {
   if (!showName.value || !selectedSource.value) return
@@ -265,6 +299,7 @@ function nextInQueue() {
     bulkIndex.value = nextIdx
     mediaType.value = 'series'
     showName.value = ''
+    selectedShow.value = null
     seasonNumber.value = 1
     previewResult.value = null
     linkProgress.value = []
@@ -282,6 +317,7 @@ function reset() {
   selectedSource.value = null
   mediaType.value = 'series'
   showName.value = ''
+  selectedShow.value = null
   seasonNumber.value = 1
   previewResult.value = null
   linkProgress.value = []
@@ -502,9 +538,9 @@ function reset() {
           </div>
         </div>
 
-        <!-- Existing shows/movies with posters -->
-        <div v-if="existingItems.length" class="space-y-2">
-          <Label class="text-xs text-muted-foreground">Or select existing {{ mediaType === 'series' ? 'show' : 'movie' }}:</Label>
+        <!-- Existing shows with season pills (series only) -->
+        <div v-if="mediaType === 'series' && library.shows.length" class="space-y-2">
+          <Label class="text-xs text-muted-foreground">Or select existing show:</Label>
 
           <!-- Search filter -->
           <div class="relative">
@@ -519,16 +555,73 @@ function reset() {
             </button>
           </div>
 
-          <!-- Show list with posters -->
+          <!-- Show list with posters and season pills -->
+          <div class="max-h-64 overflow-y-auto rounded-md border">
+            <button
+              v-for="show in filteredExistingShows"
+              :key="show.name"
+              class="flex items-center gap-3 w-full p-2 text-left hover:bg-accent transition-colors border-b last:border-b-0"
+              :class="{ 'bg-accent': showName === show.name }"
+              @click="selectExistingShow(show)"
+            >
+              <!-- Mini poster -->
+              <div class="flex-shrink-0 w-8 h-12 rounded overflow-hidden bg-muted">
+                <img
+                  v-if="findShokoPoster(show.name)"
+                  :src="findShokoPoster(show.name)!"
+                  :alt="show.name"
+                  class="w-full h-full object-cover"
+                  loading="lazy"
+                />
+                <div v-else class="w-full h-full flex items-center justify-center">
+                  <Tv class="h-3 w-3 text-muted-foreground/40" />
+                </div>
+              </div>
+              <div class="min-w-0 flex-1">
+                <span class="text-sm font-medium truncate block">{{ show.name }}</span>
+                <div v-if="show.seasons.length" class="flex gap-1 flex-wrap mt-1">
+                  <Badge
+                    v-for="season in show.seasons"
+                    :key="season.number"
+                    variant="outline"
+                    class="text-[10px] px-1.5 py-0"
+                  >
+                    S{{ season.number }} · {{ season.episodes }}ep
+                  </Badge>
+                </div>
+              </div>
+              <Check v-if="showName === show.name" class="h-4 w-4 text-primary ml-auto flex-shrink-0" />
+            </button>
+            <div v-if="filteredExistingShows.length === 0" class="p-3 text-center text-sm text-muted-foreground">
+              No matches
+            </div>
+          </div>
+        </div>
+
+        <!-- Existing movies (movies only, unchanged behavior) -->
+        <div v-if="mediaType === 'movie' && existingMovies.length" class="space-y-2">
+          <Label class="text-xs text-muted-foreground">Or select existing movie:</Label>
+
+          <div class="relative">
+            <Search class="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input v-model="showSearch" placeholder="Filter movies..." class="pl-9 h-9" />
+            <button
+              v-if="showSearch"
+              class="absolute right-2.5 top-2.5 text-muted-foreground hover:text-foreground"
+              @click="showSearch = ''"
+            >
+              <X class="h-4 w-4" />
+            </button>
+          </div>
+
           <div class="max-h-64 overflow-y-auto rounded-md border">
             <button
               v-for="name in filteredExistingItems"
               :key="name"
               class="flex items-center gap-3 w-full p-2 text-left hover:bg-accent transition-colors border-b last:border-b-0"
               :class="{ 'bg-accent': showName === name }"
-              @click="selectExistingShow(name)"
+              @click="showName = name; showSearch = ''"
             >
-              <!-- Mini poster -->
               <div class="flex-shrink-0 w-8 h-12 rounded overflow-hidden bg-muted">
                 <img
                   v-if="findShokoPoster(name)"
@@ -552,8 +645,16 @@ function reset() {
 
         <div v-if="mediaType === 'series'" class="space-y-2">
           <Label>Season Number</Label>
-          <Input v-model.number="seasonNumber" type="number" min="0" max="99" />
-          <p v-if="suggestedSeason !== null && suggestedSeason !== seasonNumber" class="text-sm text-muted-foreground">
+          <div class="flex items-center gap-2">
+            <Input v-model.number="seasonNumber" type="number" min="0" max="99" class="w-24" />
+            <span v-if="nextAvailableSeason !== null && seasonNumber === nextAvailableSeason" class="text-xs text-muted-foreground">
+              Next available
+            </span>
+          </div>
+          <p v-if="duplicateSeasonWarning" class="text-sm text-amber-500">
+            {{ duplicateSeasonWarning }}
+          </p>
+          <p v-else-if="suggestedSeason !== null && suggestedSeason !== seasonNumber" class="text-sm text-muted-foreground">
             Detected season: {{ suggestedSeason }}
             <Button variant="link" size="sm" class="h-auto p-0 ml-1" @click="seasonNumber = suggestedSeason!">
               Use this
