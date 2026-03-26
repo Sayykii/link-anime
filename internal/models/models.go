@@ -12,9 +12,10 @@ type Show struct {
 
 // Season represents a season directory within a show.
 type Season struct {
-	Number   int    `json:"number"`
-	Path     string `json:"path"`
-	Episodes int    `json:"episodes"`
+	Number   int      `json:"number"`
+	Path     string   `json:"path"`
+	Episodes int      `json:"episodes"`
+	Files    []string `json:"files"`
 }
 
 // Movie represents a movie in the movies library.

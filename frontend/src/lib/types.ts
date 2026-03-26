@@ -11,6 +11,7 @@ export interface Season {
   number: number
   path: string
   episodes: number
+  files: string[]
 }
 
 export interface Movie {

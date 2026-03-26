@@ -74,6 +74,7 @@ const folderMap = ref<Record<string, { shokoId: number; name: string; posterUrl?
 const shokoAvailable = ref(false)
 const showSearch = ref('')
 const selectedShow = ref<Show | null>(null)
+const expandedSeason = ref<{ showName: string; seasonNumber: number } | null>(null)
 
 // Step 4/5: Preview & Progress
 const previewResult = ref<LinkResult | null>(null)
@@ -229,6 +230,7 @@ function selectType(type: 'series' | 'movie') {
 function selectExistingShow(show: Show) {
   showName.value = show.name
   selectedShow.value = show
+  expandedSeason.value = null
   showSearch.value = ''
   // Auto-fill season to next available
   if (show.seasons.length > 0) {
@@ -243,6 +245,15 @@ watch(showName, (name) => {
     selectedShow.value = null
   }
 })
+
+function toggleSeasonFiles(showName: string, seasonNumber: number, event: Event) {
+  event.stopPropagation() // Don't trigger the parent show button click
+  if (expandedSeason.value?.showName === showName && expandedSeason.value?.seasonNumber === seasonNumber) {
+    expandedSeason.value = null
+  } else {
+    expandedSeason.value = { showName, seasonNumber }
+  }
+}
 
 async function goToConfirm() {
   if (!showName.value || !selectedSource.value) return
@@ -300,6 +311,7 @@ function nextInQueue() {
     mediaType.value = 'series'
     showName.value = ''
     selectedShow.value = null
+    expandedSeason.value = null
     seasonNumber.value = 1
     previewResult.value = null
     linkProgress.value = []
@@ -318,6 +330,7 @@ function reset() {
   mediaType.value = 'series'
   showName.value = ''
   selectedShow.value = null
+  expandedSeason.value = null
   seasonNumber.value = 1
   previewResult.value = null
   linkProgress.value = []
@@ -556,42 +569,72 @@ function reset() {
           </div>
 
           <!-- Show list with posters and season pills -->
-          <div class="max-h-64 overflow-y-auto rounded-md border">
-            <button
+          <div class="max-h-80 overflow-y-auto rounded-md border">
+            <div
               v-for="show in filteredExistingShows"
               :key="show.name"
-              class="flex items-center gap-3 w-full p-2 text-left hover:bg-accent transition-colors border-b last:border-b-0"
-              :class="{ 'bg-accent': showName === show.name }"
-              @click="selectExistingShow(show)"
+              class="border-b last:border-b-0"
             >
-              <!-- Mini poster -->
-              <div class="flex-shrink-0 w-8 h-12 rounded overflow-hidden bg-muted">
-                <img
-                  v-if="findShokoPoster(show.name)"
-                  :src="findShokoPoster(show.name)!"
-                  :alt="show.name"
-                  class="w-full h-full object-cover"
-                  loading="lazy"
-                />
-                <div v-else class="w-full h-full flex items-center justify-center">
-                  <Tv class="h-3 w-3 text-muted-foreground/40" />
+              <button
+                class="flex items-center gap-3 w-full p-2 text-left hover:bg-accent transition-colors"
+                :class="{ 'bg-accent': showName === show.name }"
+                @click="selectExistingShow(show)"
+              >
+                <!-- Mini poster -->
+                <div class="flex-shrink-0 w-8 h-12 rounded overflow-hidden bg-muted">
+                  <img
+                    v-if="findShokoPoster(show.name)"
+                    :src="findShokoPoster(show.name)!"
+                    :alt="show.name"
+                    class="w-full h-full object-cover"
+                    loading="lazy"
+                  />
+                  <div v-else class="w-full h-full flex items-center justify-center">
+                    <Tv class="h-3 w-3 text-muted-foreground/40" />
+                  </div>
                 </div>
-              </div>
-              <div class="min-w-0 flex-1">
-                <span class="text-sm font-medium truncate block">{{ show.name }}</span>
-                <div v-if="show.seasons.length" class="flex gap-1 flex-wrap mt-1">
-                  <Badge
-                    v-for="season in show.seasons"
-                    :key="season.number"
-                    variant="outline"
-                    class="text-[10px] px-1.5 py-0"
-                  >
-                    S{{ season.number }} · {{ season.episodes }}ep
-                  </Badge>
+                <div class="min-w-0 flex-1">
+                  <span class="text-sm font-medium truncate block">{{ show.name }}</span>
+                  <div v-if="show.seasons.length" class="flex gap-1 flex-wrap mt-1">
+                    <Badge
+                      v-for="season in show.seasons"
+                      :key="season.number"
+                      variant="outline"
+                      class="text-[10px] px-1.5 py-0 cursor-pointer hover:bg-accent"
+                      :class="{ 'bg-primary/10 border-primary/40': expandedSeason?.showName === show.name && expandedSeason?.seasonNumber === season.number }"
+                      @click="toggleSeasonFiles(show.name, season.number, $event)"
+                    >
+                      S{{ season.number }} · {{ season.episodes }}ep
+                    </Badge>
+                  </div>
                 </div>
+                <Check v-if="showName === show.name" class="h-4 w-4 text-primary ml-auto flex-shrink-0" />
+              </button>
+              <!-- Expanded file list panel -->
+              <div
+                v-if="show.seasons.some(s => expandedSeason?.showName === show.name && expandedSeason?.seasonNumber === s.number)"
+                class="px-3 pb-3 pt-1 bg-muted/30 border-t border-border/50"
+              >
+                <template v-for="season in show.seasons" :key="season.number">
+                  <div v-if="expandedSeason?.showName === show.name && expandedSeason?.seasonNumber === season.number">
+                    <div class="flex items-center justify-between mb-1.5">
+                      <span class="text-xs font-medium text-muted-foreground">Season {{ season.number }} — {{ season.files.length }} file{{ season.files.length !== 1 ? 's' : '' }}</span>
+                    </div>
+                    <div v-if="season.files.length" class="max-h-40 overflow-y-auto rounded border bg-background/50 p-2">
+                      <div
+                        v-for="file in season.files"
+                        :key="file"
+                        class="text-[11px] font-mono text-muted-foreground py-0.5 truncate"
+                        :title="file"
+                      >
+                        {{ file }}
+                      </div>
+                    </div>
+                    <div v-else class="text-xs text-muted-foreground italic">No files</div>
+                  </div>
+                </template>
               </div>
-              <Check v-if="showName === show.name" class="h-4 w-4 text-primary ml-auto flex-shrink-0" />
-            </button>
+            </div>
             <div v-if="filteredExistingShows.length === 0" class="p-3 text-center text-sm text-muted-foreground">
               No matches
             </div>

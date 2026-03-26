@@ -72,13 +72,14 @@ func ScanLibrary(mediaDir string) ([]models.Show, error) {
 			}
 
 			seasonPath := filepath.Join(showPath, se.Name())
-			epCount := countVideos(seasonPath)
+			files := collectVideos(seasonPath)
 			show.Seasons = append(show.Seasons, models.Season{
 				Number:   seasonNum,
 				Path:     seasonPath,
-				Episodes: epCount,
+				Episodes: len(files),
+				Files:    files,
 			})
-			show.Episodes += epCount
+			show.Episodes += len(files)
 		}
 
 		// Also count loose videos at show root
@@ -293,6 +294,22 @@ func countVideosFlat(dir string) int {
 		}
 	}
 	return count
+}
+
+// collectVideos walks a directory and returns sorted video filenames (names only, not paths).
+func collectVideos(dir string) []string {
+	var files []string
+	filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return nil
+		}
+		if !info.IsDir() && IsVideo(info.Name()) {
+			files = append(files, info.Name())
+		}
+		return nil
+	})
+	sort.Strings(files)
+	return files
 }
 
 func dirSize(dir string) int64 {
