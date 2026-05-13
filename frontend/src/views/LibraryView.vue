@@ -90,16 +90,23 @@ onMounted(async () => {
   loading.value = false
 })
 
-const showPathMap = computed(() => {
-  const map: Record<string, string> = {}
+const shokoIdToShowPath = computed(() => {
+  const showsByName: Record<string, string> = {}
   for (const show of library.shows) {
-    map[show.name.toLowerCase()] = show.path
+    showsByName[show.name.toLowerCase()] = show.path
+  }
+  const map: Record<number, string> = {}
+  for (const [folderName, entry] of Object.entries(folderMap.value)) {
+    const path = showsByName[folderName.toLowerCase()]
+    if (path) {
+      map[entry.shokoId] = path
+    }
   }
   return map
 })
 
-function getShowPath(seriesName: string): string | null {
-  return showPathMap.value[seriesName.toLowerCase()] ?? null
+function getShowPath(seriesId: number): string | null {
+  return shokoIdToShowPath.value[seriesId] ?? null
 }
 
 const filteredShokoSeries = computed(() => {
@@ -323,7 +330,7 @@ async function executeUnlink(force: boolean) {
                 </div>
 
                 <!-- Context menu -->
-                <div v-if="getShowPath(series.Name)" class="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity" @click.stop>
+                <div v-if="getShowPath(series.IDs.ID)" class="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity" @click.stop>
                   <DropdownMenu>
                     <DropdownMenuTrigger as-child>
                       <Button variant="secondary" size="icon" class="h-7 w-7 rounded-full shadow-md">
@@ -333,7 +340,7 @@ async function executeUnlink(force: boolean) {
                     <DropdownMenuContent align="start">
                       <DropdownMenuItem
                         class="text-destructive"
-                        @click="openUnlinkDialog(series.Name, getShowPath(series.Name)!, 'show')"
+                        @click="openUnlinkDialog(series.Name, getShowPath(series.IDs.ID)!, 'show')"
                       >
                         <Trash2 class="h-4 w-4 mr-2" />
                         Unlink
