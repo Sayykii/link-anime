@@ -27,8 +27,9 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { toast } from 'vue-sonner'
-import { Undo2, RefreshCw, Clock, Loader2, AlertTriangle, Search, X, History as HistoryIcon } from 'lucide-vue-next'
+import { Undo2, RefreshCw, Clock, Loader2, Search, X, History as HistoryIcon } from 'lucide-vue-next'
 import EmptyState from '@/components/EmptyState.vue'
+import FileSafetyWarning from '@/components/FileSafetyWarning.vue'
 
 const api = useApi()
 const router = useRouter()
@@ -168,40 +169,11 @@ function formatDate(ts: string): string {
             <Loader2 class="h-4 w-4 animate-spin" />
             Checking file safety...
           </AlertDialogDescription>
-          <AlertDialogDescription v-else-if="undoPreview && undoEntry">
-            <div class="space-y-3">
-              <p>
-                This will undo the link for "<strong>{{ undoEntry.showName }}</strong>"
-                ({{ undoPreview.totalFiles }} file{{ undoPreview.totalFiles !== 1 ? 's' : '' }} on disk).
-              </p>
-
-              <!-- Safety warning for files that are the only copy -->
-              <div
-                v-if="hasUnsafeFiles"
-                class="rounded-md border border-destructive/50 bg-destructive/10 p-3 space-y-2"
-              >
-                <div class="flex items-center gap-2 text-destructive font-medium">
-                  <AlertTriangle class="h-4 w-4" />
-                  Data loss warning
-                </div>
-                <p class="text-sm">
-                  <strong>{{ undoPreview.unsafeFiles!.length }}</strong>
-                  file{{ undoPreview.unsafeFiles!.length !== 1 ? 's are' : ' is' }} the
-                  <strong>only copy</strong> (source file in downloads no longer exists).
-                  Removing {{ undoPreview.unsafeFiles!.length !== 1 ? 'them' : 'it' }} will cause
-                  <strong>permanent data loss</strong>.
-                </p>
-              </div>
-
-              <div v-if="undoPreview.safeFiles && undoPreview.safeFiles.length > 0" class="text-sm text-muted-foreground">
-                {{ undoPreview.safeFiles.length }} file{{ undoPreview.safeFiles.length !== 1 ? 's are' : ' is' }}
-                safe to remove (hardlinks with source still in downloads).
-              </div>
-
-              <div v-if="undoPreview.totalFiles === 0" class="text-sm text-muted-foreground">
-                All files are already gone. This will just remove the history entry.
-              </div>
-            </div>
+          <AlertDialogDescription v-else-if="undoPreview && undoEntry" as="div">
+            <p class="mb-3">
+              Undo link for "<strong>{{ undoEntry.showName }}</strong>":
+            </p>
+            <FileSafetyWarning :preview="undoPreview" :show-zero-note="true" />
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter v-if="!undoLoading && undoPreview">
@@ -224,7 +196,7 @@ function formatDate(ts: string): string {
               class="bg-destructive text-destructive-foreground hover:bg-destructive/90 gap-2"
             >
               <Loader2 v-if="undoExecuting" class="h-4 w-4 animate-spin" />
-              Remove all (data loss)
+              Remove all
             </AlertDialogAction>
           </template>
           <!-- All files are safe or all gone -->

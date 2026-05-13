@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"path/filepath"
 
 	"link-anime/internal/linker"
 	"link-anime/internal/models"
@@ -130,6 +131,27 @@ func (s *Server) handleUnlink(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Send notification
+	if s.Notifier != nil && result.Linked > 0 {
+		name := filepath.Base(req.Path)
+		title := "Unlinked: " + name
+		s.Notifier.Send(title, "Removed hardlinks from library", []notify.Field{
+			{Name: "Files", Value: fmt.Sprintf("%d", result.Linked)},
+		}, "red")
+	}
+
+	// Trigger Shoko to rescan import folders (detect removed files)
+	if s.Shoko != nil && s.Shoko.IsConfigured() && result.Linked > 0 {
+		go func() {
+			log.Printf("[shoko] Triggering rescan after unlink: %s", filepath.Base(req.Path))
+			if err := s.Shoko.ScanAllImportFolders(); err != nil {
+				log.Printf("[shoko] Scan all import folders failed: %v", err)
+			} else {
+				log.Printf("[shoko] Scan all import folders triggered successfully")
+			}
+		}()
+	}
+
 	jsonOK(w, result)
 }
 
@@ -167,6 +189,26 @@ func (s *Server) handleUndo(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
+	}
+
+	// Send notification
+	if s.Notifier != nil && result.Linked > 0 {
+		title := "Undone: " + entry.ShowName
+		s.Notifier.Send(title, "Reverted linked files from library", []notify.Field{
+			{Name: "Files", Value: fmt.Sprintf("%d", result.Linked)},
+		}, "red")
+	}
+
+	// Trigger Shoko to rescan import folders (detect removed files)
+	if s.Shoko != nil && s.Shoko.IsConfigured() && result.Linked > 0 {
+		go func() {
+			log.Printf("[shoko] Triggering rescan after undo: %s", entry.ShowName)
+			if err := s.Shoko.ScanAllImportFolders(); err != nil {
+				log.Printf("[shoko] Scan all import folders failed: %v", err)
+			} else {
+				log.Printf("[shoko] Scan all import folders triggered successfully")
+			}
+		}()
 	}
 
 	jsonOK(w, map[string]interface{}{

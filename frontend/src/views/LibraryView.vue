@@ -30,8 +30,15 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Search, RefreshCw, Tv, Film, Loader2, AlertTriangle, X, Trash2 } from 'lucide-vue-next'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { Search, RefreshCw, Tv, Film, Loader2, X, Trash2, MoreVertical } from 'lucide-vue-next'
 import EmptyState from '@/components/EmptyState.vue'
+import FileSafetyWarning from '@/components/FileSafetyWarning.vue'
 import { toast } from 'vue-sonner'
 
 const api = useApi()
@@ -82,6 +89,18 @@ onMounted(async () => {
   library.fetchMovies()
   loading.value = false
 })
+
+const showPathMap = computed(() => {
+  const map: Record<string, string> = {}
+  for (const show of library.shows) {
+    map[show.name.toLowerCase()] = show.path
+  }
+  return map
+})
+
+function getShowPath(seriesName: string): string | null {
+  return showPathMap.value[seriesName.toLowerCase()] ?? null
+}
 
 const filteredShokoSeries = computed(() => {
   if (!searchQuery.value) return shokoSeries.value
@@ -262,7 +281,7 @@ async function executeUnlink(force: boolean) {
           </div>
 
           <div v-else class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-            <button
+            <div
               v-for="series in filteredShokoSeries"
               :key="series.IDs.ID"
               class="group text-left cursor-pointer"
@@ -302,6 +321,26 @@ async function executeUnlink(force: boolean) {
                     {{ (series.AniDB.Rating.Value / (series.AniDB.Rating.MaxValue / 10)).toFixed(1) }}
                   </Badge>
                 </div>
+
+                <!-- Context menu -->
+                <div v-if="getShowPath(series.Name)" class="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity" @click.stop>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger as-child>
+                      <Button variant="secondary" size="icon" class="h-7 w-7 rounded-full shadow-md">
+                        <MoreVertical class="h-3.5 w-3.5" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start">
+                      <DropdownMenuItem
+                        class="text-destructive"
+                        @click="openUnlinkDialog(series.Name, getShowPath(series.Name)!, 'show')"
+                      >
+                        <Trash2 class="h-4 w-4 mr-2" />
+                        Unlink
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
               </div>
 
               <!-- Title -->
@@ -309,7 +348,7 @@ async function executeUnlink(force: boolean) {
                 {{ series.Name }}
               </p>
               <p v-if="series.AniDB?.Type" class="text-xs text-muted-foreground mt-0.5">{{ series.AniDB.Type }}</p>
-            </button>
+            </div>
           </div>
 
           <!-- Load More -->
@@ -512,31 +551,8 @@ async function executeUnlink(force: boolean) {
             <Loader2 class="h-4 w-4 animate-spin" />
             Checking file safety...
           </AlertDialogDescription>
-          <AlertDialogDescription v-else-if="unlinkPreview">
-            <div class="space-y-3">
-              <p>
-                This will remove <strong>{{ unlinkPreview.totalFiles }}</strong>
-                video file{{ unlinkPreview.totalFiles !== 1 ? 's' : '' }} from the library.
-              </p>
-              <div
-                v-if="hasUnsafeFiles"
-                class="rounded-md border border-destructive/50 bg-destructive/10 p-3 space-y-2"
-              >
-                <div class="flex items-center gap-2 text-destructive font-medium">
-                  <AlertTriangle class="h-4 w-4" />
-                  Data loss warning
-                </div>
-                <p class="text-sm">
-                  <strong>{{ unlinkPreview.unsafeFiles!.length }}</strong>
-                  file{{ unlinkPreview.unsafeFiles!.length !== 1 ? 's are' : ' is' }} the
-                  <strong>only copy</strong>.
-                </p>
-              </div>
-              <div v-if="unlinkPreview.safeFiles && unlinkPreview.safeFiles.length > 0" class="text-sm text-muted-foreground">
-                {{ unlinkPreview.safeFiles.length }} file{{ unlinkPreview.safeFiles.length !== 1 ? 's are' : ' is' }}
-                safe to remove.
-              </div>
-            </div>
+          <AlertDialogDescription v-else-if="unlinkPreview" as="div">
+            <FileSafetyWarning :preview="unlinkPreview" />
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter v-if="!unlinkLoading && unlinkPreview">
@@ -558,7 +574,7 @@ async function executeUnlink(force: boolean) {
               class="bg-destructive text-destructive-foreground hover:bg-destructive/90 gap-2"
             >
               <Loader2 v-if="unlinkExecuting" class="h-4 w-4 animate-spin" />
-              Remove all (data loss)
+              Remove all
             </AlertDialogAction>
           </template>
           <AlertDialogAction
