@@ -3,18 +3,18 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useApi } from '@/composables/useApi'
 import { useWebSocket } from '@/composables/useWebSocket'
 import { useLibraryStore } from '@/stores/library'
-import { formatSize } from '@/lib/utils'
 import { useRoute, useRouter } from 'vue-router'
 import type { DownloadItem, LinkResult, LinkProgress, Show } from '@/lib/types'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
-import { Separator } from '@/components/ui/separator'
-import { Progress } from '@/components/ui/progress'
 import { toast } from 'vue-sonner'
-import { FolderOpen, FileVideo, Link, ArrowRight, Check, Loader2, Tv, Search, X, Eye, EyeOff, CheckCircle } from 'lucide-vue-next'
+import { ArrowRight } from 'lucide-vue-next'
+
+import SourceStep from '@/components/link-wizard/SourceStep.vue'
+import TypeStep from '@/components/link-wizard/TypeStep.vue'
+import DetailsStep from '@/components/link-wizard/DetailsStep.vue'
+import ConfirmStep from '@/components/link-wizard/ConfirmStep.vue'
+import ProgressStep from '@/components/link-wizard/ProgressStep.vue'
+import DoneStep from '@/components/link-wizard/DoneStep.vue'
 
 const api = useApi()
 const library = useLibraryStore()
@@ -23,7 +23,7 @@ const router = useRouter()
 const { connect, on, connected } = useWebSocket()
 
 // Wizard state
-const step = ref(1) // 1=source, 2=type, 3=details, 4=confirm, 5=progress, 6=done
+const step = ref(1)
 const loading = ref(false)
 
 // Step 1: Source selection
@@ -40,13 +40,9 @@ const isBulkMode = computed(() => bulkQueue.value.length > 1)
 const bulkTotal = computed(() => bulkQueue.value.length)
 const bulkCurrent = computed(() => bulkIndex.value + 1)
 
-// Linked file detection (uses file paths + history source name fallback)
+// Linked file detection
 type LinkedSource = { id: number; mediaType: string; showName: string; season?: number }
 const linkedSources = ref<Record<string, LinkedSource>>({})
-
-function getLinkedEntry(downloadName: string): LinkedSource | undefined {
-  return linkedSources.value[downloadName]
-}
 
 const filteredSources = computed(() => {
   let items = downloads.value
@@ -72,9 +68,7 @@ const suggestedSeason = ref<number | null>(null)
 // Shoko folder mapping for poster matching
 const folderMap = ref<Record<string, { shokoId: number; name: string; posterUrl?: string }>>({})
 const shokoAvailable = ref(false)
-const showSearch = ref('')
 const selectedShow = ref<Show | null>(null)
-const expandedSeason = ref<{ showName: string; seasonNumber: number } | null>(null)
 
 // Step 4/5: Preview & Progress
 const previewResult = ref<LinkResult | null>(null)
@@ -84,40 +78,20 @@ const progressPercent = ref(0)
 // Step 6: Final result
 const finalResult = ref<LinkResult | null>(null)
 
-// Existing movies for selection (series uses filteredExistingShows with full Show objects)
 const existingMovies = computed(() => library.movies.map(m => m.name))
 
-// Get poster URL for a folder name via the folder map
 function findShokoPoster(folderName: string): string | null {
   const entry = folderMap.value[folderName]
   return entry?.posterUrl ?? null
 }
 
-// Current poster for the selected show name
 const currentPoster = computed(() => findShokoPoster(showName.value))
 
-// Filtered existing movies based on search
-const filteredExistingItems = computed(() => {
-  if (!showSearch.value) return existingMovies.value
-  const q = showSearch.value.toLowerCase()
-  return existingMovies.value.filter(name => name.toLowerCase().includes(q))
-})
-
-// Series-specific: returns full Show objects so template can access seasons
-const filteredExistingShows = computed(() => {
-  const shows = library.shows
-  if (!showSearch.value) return shows
-  const q = showSearch.value.toLowerCase()
-  return shows.filter(s => s.name.toLowerCase().includes(q))
-})
-
-// Next available season number for the selected show
 const nextAvailableSeason = computed(() => {
   if (!selectedShow.value || !selectedShow.value.seasons.length) return null
   return Math.max(...selectedShow.value.seasons.map(s => s.number)) + 1
 })
 
-// Warning when user enters a season number that already exists
 const duplicateSeasonWarning = computed(() => {
   if (!selectedShow.value) return null
   const existing = selectedShow.value.seasons.find(s => s.number === seasonNumber.value)
@@ -130,7 +104,6 @@ onMounted(async () => {
   await loadDownloads()
   await Promise.all([library.fetchShows(), library.fetchMovies()])
 
-  // Load Shoko folder map for poster matching
   try {
     folderMap.value = await api.shokoFolderMap()
     shokoAvailable.value = true
@@ -138,7 +111,6 @@ onMounted(async () => {
     shokoAvailable.value = false
   }
 
-  // Auto-select source from query param (from Downloads page "Link" button)
   const sourceParam = route.query.source as string | undefined
   if (sourceParam && downloads.value.length) {
     const match = downloads.value.find(d => d.name === sourceParam)
@@ -149,7 +121,6 @@ onMounted(async () => {
   }
 })
 
-// Listen for WebSocket progress
 on('link:progress', (data) => {
   const p = data as LinkProgress
   linkProgress.value.push(p)
@@ -230,30 +201,17 @@ function selectType(type: 'series' | 'movie') {
 function selectExistingShow(show: Show) {
   showName.value = show.name
   selectedShow.value = show
-  expandedSeason.value = null
-  showSearch.value = ''
-  // Auto-fill season to next available
   if (show.seasons.length > 0) {
     const maxSeason = Math.max(...show.seasons.map(s => s.number))
     seasonNumber.value = maxSeason + 1
   }
 }
 
-// Clear selectedShow when user manually changes the name (so duplicate warning doesn't show stale data)
 watch(showName, (name) => {
   if (selectedShow.value && name !== selectedShow.value.name) {
     selectedShow.value = null
   }
 })
-
-function toggleSeasonFiles(showName: string, seasonNumber: number, event: Event) {
-  event.stopPropagation() // Don't trigger the parent show button click
-  if (expandedSeason.value?.showName === showName && expandedSeason.value?.seasonNumber === seasonNumber) {
-    expandedSeason.value = null
-  } else {
-    expandedSeason.value = { showName, seasonNumber }
-  }
-}
 
 async function goToConfirm() {
   if (!showName.value || !selectedSource.value) return
@@ -311,13 +269,11 @@ function nextInQueue() {
     mediaType.value = 'series'
     showName.value = ''
     selectedShow.value = null
-    expandedSeason.value = null
     seasonNumber.value = 1
     previewResult.value = null
     linkProgress.value = []
     finalResult.value = null
     progressPercent.value = 0
-    showSearch.value = ''
     beginSource(bulkQueue.value[nextIdx])
   }
 }
@@ -330,13 +286,11 @@ function reset() {
   mediaType.value = 'series'
   showName.value = ''
   selectedShow.value = null
-  expandedSeason.value = null
   seasonNumber.value = 1
   previewResult.value = null
   linkProgress.value = []
   finalResult.value = null
   progressPercent.value = 0
-  showSearch.value = ''
   sourceFilter.value = ''
   selectedSources.value = new Set()
   bulkQueue.value = []
@@ -391,463 +345,81 @@ function reset() {
       </template>
     </div>
 
-    <!-- Step 1: Select source -->
-    <Card v-if="step === 1" glass>
-      <CardHeader class="flex flex-row items-center justify-between">
-        <div>
-          <CardTitle>Select Source</CardTitle>
-          <CardDescription>Choose downloads to link into your library</CardDescription>
-        </div>
-        <Button
-          v-if="selectedSources.size > 0"
-          @click="startLinking"
-          class="gap-2 shrink-0"
-        >
-          <Link class="h-4 w-4" />
-          Link {{ selectedSources.size }} selected
-        </Button>
-      </CardHeader>
-      <CardContent>
-        <div v-if="loading" class="flex items-center gap-2 text-muted-foreground py-8 justify-center">
-          <Loader2 class="h-4 w-4 animate-spin" />
-          Loading downloads...
-        </div>
-        <div v-else-if="!downloads.length" class="text-center text-muted-foreground py-8">
-          No downloads found in the download directory
-        </div>
-        <template v-else>
-          <!-- Source filter and linked toggle -->
-          <div class="flex items-center gap-2 mb-3">
-            <div v-if="downloads.length > 5" class="relative flex-1">
-              <Search class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input v-model="sourceFilter" placeholder="Filter downloads..." class="pl-9 h-9" />
-              <button
-                v-if="sourceFilter"
-                class="absolute right-2.5 top-2.5 text-muted-foreground hover:text-foreground"
-                @click="sourceFilter = ''"
-              >
-                <X class="h-4 w-4" />
-              </button>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              class="gap-1.5 shrink-0 h-9"
-              @click="showLinked = !showLinked"
-            >
-              <Eye v-if="showLinked" class="h-3.5 w-3.5" />
-              <EyeOff v-else class="h-3.5 w-3.5" />
-              <span class="hidden sm:inline">{{ showLinked ? 'Showing linked' : 'Hiding linked' }}</span>
-            </Button>
-          </div>
-          <div v-if="sourceFilter && !filteredSources.length" class="text-center text-muted-foreground py-8">
-            No downloads matching "{{ sourceFilter }}"
-            <div class="mt-2">
-              <Button variant="outline" size="sm" @click="sourceFilter = ''">Clear filter</Button>
-            </div>
-          </div>
-        <div v-else class="space-y-2">
-          <div
-            v-for="item in filteredSources"
-            :key="item.path"
-            class="flex w-full items-center gap-3 rounded-lg border p-3 transition-colors"
-            :class="[
-              item.linked ? 'border-green-500/30 bg-green-500/5' : '',
-              selectedSources.has(item.path) ? 'ring-2 ring-primary border-primary' : '',
-            ]"
-          >
-            <!-- Checkbox for multi-select -->
-            <button
-              class="shrink-0 h-5 w-5 rounded border-2 flex items-center justify-center transition-colors"
-              :class="selectedSources.has(item.path) ? 'bg-primary border-primary text-primary-foreground' : 'border-muted-foreground/40 hover:border-primary'"
-              @click.stop="toggleSource(item)"
-            >
-              <Check v-if="selectedSources.has(item.path)" class="h-3 w-3" />
-            </button>
-            <button
-              class="flex items-center gap-3 min-w-0 flex-1 text-left hover:opacity-80"
-              @click="selectSource(item)"
-            >
-              <FolderOpen v-if="item.isDir" class="h-5 w-5 shrink-0" :class="item.linked ? 'text-green-500' : 'text-muted-foreground'" />
-              <FileVideo v-else class="h-5 w-5 shrink-0" :class="item.linked ? 'text-green-500' : 'text-muted-foreground'" />
-              <div class="min-w-0 flex-1">
-                <div class="flex items-center gap-2">
-                  <span class="truncate font-medium">{{ item.name }}</span>
-                  <Badge v-if="item.linked" variant="outline" class="shrink-0 gap-1 text-green-600 border-green-500/30 text-xs">
-                    <CheckCircle class="h-3 w-3" />
-                    Linked
-                  </Badge>
-                </div>
-                <div class="text-sm text-muted-foreground">
-                  {{ item.videoCount }} video{{ item.videoCount !== 1 ? 's' : '' }}
-                  &middot; {{ formatSize(item.size) }}
-                </div>
-              </div>
-            </button>
-          </div>
-        </div>
-        </template>
-      </CardContent>
-    </Card>
+    <!-- Steps -->
+    <SourceStep
+      v-if="step === 1"
+      :downloads="downloads"
+      :loading="loading"
+      v-model:source-filter="sourceFilter"
+      :show-linked="showLinked"
+      :filtered-sources="filteredSources"
+      :selected-sources="selectedSources"
+      :linked-sources="linkedSources"
+      @update:show-linked="showLinked = $event"
+      @toggle-source="toggleSource"
+      @select-source="selectSource"
+      @start-linking="startLinking"
+    />
 
-    <!-- Step 2: Select type -->
-    <Card v-if="step === 2" glass>
-      <CardHeader>
-        <CardTitle>Select Type</CardTitle>
-        <CardDescription>
-          Is "{{ selectedSource?.name }}" a series or a movie?
-        </CardDescription>
-      </CardHeader>
-      <CardContent class="flex gap-4">
-        <Button
-          size="lg"
-          :variant="mediaType === 'series' ? 'default' : 'outline'"
-          class="flex-1 gap-2"
-          @click="selectType('series')"
-        >
-          Series
-        </Button>
-        <Button
-          size="lg"
-          :variant="mediaType === 'movie' ? 'default' : 'outline'"
-          class="flex-1 gap-2"
-          @click="selectType('movie')"
-        >
-          Movie
-        </Button>
-      </CardContent>
-      <CardContent class="pt-0">
-        <Button variant="ghost" size="sm" @click="step = 1">Back</Button>
-      </CardContent>
-    </Card>
+    <TypeStep
+      v-if="step === 2"
+      :source-name="selectedSource?.name ?? ''"
+      @select-type="selectType"
+      @back="step = 1"
+    />
 
-    <!-- Step 3: Details -->
-    <Card v-if="step === 3" glass>
-      <CardHeader>
-        <CardTitle>{{ mediaType === 'series' ? 'Series' : 'Movie' }} Details</CardTitle>
-        <CardDescription>
-          Confirm the name{{ mediaType === 'series' ? ' and season' : '' }}
-        </CardDescription>
-      </CardHeader>
-      <CardContent class="space-y-4">
-        <!-- Name input with poster preview -->
-        <div class="flex gap-4">
-          <!-- Poster preview -->
-          <div v-if="shokoAvailable && currentPoster" class="flex-shrink-0 w-20">
-            <div class="aspect-[2/3] rounded-md overflow-hidden bg-muted ring-1 ring-border/50">
-              <img :src="currentPoster" :alt="showName" class="w-full h-full object-cover" loading="lazy" />
-            </div>
-          </div>
+    <DetailsStep
+      v-if="step === 3"
+      :media-type="mediaType"
+      v-model:show-name="showName"
+      v-model:season-number="seasonNumber"
+      :suggested-name="suggestedName"
+      :suggested-season="suggestedSeason"
+      :shoko-available="shokoAvailable"
+      :current-poster="currentPoster"
+      :shows="library.shows"
+      :existing-movies="existingMovies"
+      :selected-show="selectedShow"
+      :next-available-season="nextAvailableSeason"
+      :duplicate-season-warning="duplicateSeasonWarning"
+      :loading="loading"
+      :folder-map="folderMap"
+      @select-existing-show="selectExistingShow"
+      @confirm="goToConfirm"
+      @back="step = 2"
+    />
 
-          <div class="flex-1 space-y-2">
-            <Label>Name</Label>
-            <Input v-model="showName" placeholder="Show or movie name" />
-            <p v-if="suggestedName && suggestedName !== showName" class="text-sm text-muted-foreground">
-              Suggested: {{ suggestedName }}
-              <Button variant="link" size="sm" class="h-auto p-0 ml-1" @click="showName = suggestedName">
-                Use this
-              </Button>
-            </p>
-          </div>
-        </div>
+    <ConfirmStep
+      v-if="step === 4"
+      :selected-source="selectedSource"
+      :media-type="mediaType"
+      :show-name="showName"
+      :season-number="seasonNumber"
+      :preview-result="previewResult"
+      :shoko-available="shokoAvailable"
+      :current-poster="currentPoster"
+      @execute="executeLink"
+      @back="step = 3"
+    />
 
-        <!-- Existing shows with season pills (series only) -->
-        <div v-if="mediaType === 'series' && library.shows.length" class="space-y-2">
-          <Label class="text-xs text-muted-foreground">Or select existing show:</Label>
+    <ProgressStep
+      v-if="step === 5"
+      :progress-percent="progressPercent"
+      :link-progress="linkProgress"
+    />
 
-          <!-- Search filter -->
-          <div class="relative">
-            <Search class="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input v-model="showSearch" placeholder="Filter shows..." class="pl-9 h-9" />
-            <button
-              v-if="showSearch"
-              class="absolute right-2.5 top-2.5 text-muted-foreground hover:text-foreground"
-              @click="showSearch = ''"
-            >
-              <X class="h-4 w-4" />
-            </button>
-          </div>
-
-          <!-- Show list with posters and season pills -->
-          <div class="max-h-80 overflow-y-auto rounded-md border">
-            <div
-              v-for="show in filteredExistingShows"
-              :key="show.name"
-              class="border-b last:border-b-0"
-            >
-              <button
-                class="flex items-center gap-3 w-full p-2 text-left hover:bg-accent transition-colors"
-                :class="{ 'bg-accent': showName === show.name }"
-                @click="selectExistingShow(show)"
-              >
-                <!-- Mini poster -->
-                <div class="flex-shrink-0 w-8 h-12 rounded overflow-hidden bg-muted">
-                  <img
-                    v-if="findShokoPoster(show.name)"
-                    :src="findShokoPoster(show.name)!"
-                    :alt="show.name"
-                    class="w-full h-full object-cover"
-                    loading="lazy"
-                  />
-                  <div v-else class="w-full h-full flex items-center justify-center">
-                    <Tv class="h-3 w-3 text-muted-foreground/40" />
-                  </div>
-                </div>
-                <div class="min-w-0 flex-1">
-                  <span class="text-sm font-medium truncate block">{{ show.name }}</span>
-                  <div v-if="show.seasons.length" class="flex gap-1 flex-wrap mt-1">
-                    <Badge
-                      v-for="season in show.seasons"
-                      :key="season.number"
-                      variant="outline"
-                      class="text-[10px] px-1.5 py-0 cursor-pointer hover:bg-accent"
-                      :class="{ 'bg-primary/10 border-primary/40': expandedSeason?.showName === show.name && expandedSeason?.seasonNumber === season.number }"
-                      @click="toggleSeasonFiles(show.name, season.number, $event)"
-                    >
-                      S{{ season.number }} · {{ season.episodes }}ep
-                    </Badge>
-                  </div>
-                </div>
-                <Check v-if="showName === show.name" class="h-4 w-4 text-primary ml-auto flex-shrink-0" />
-              </button>
-              <!-- Expanded file list panel -->
-              <div
-                v-if="show.seasons.some(s => expandedSeason?.showName === show.name && expandedSeason?.seasonNumber === s.number)"
-                class="px-3 pb-3 pt-1 bg-muted/30 border-t border-border/50"
-              >
-                <template v-for="season in show.seasons" :key="season.number">
-                  <div v-if="expandedSeason?.showName === show.name && expandedSeason?.seasonNumber === season.number">
-                    <div class="flex items-center justify-between mb-1.5">
-                      <span class="text-xs font-medium text-muted-foreground">Season {{ season.number }} — {{ season.files.length }} file{{ season.files.length !== 1 ? 's' : '' }}</span>
-                    </div>
-                    <div v-if="season.files.length" class="max-h-40 overflow-y-auto rounded border bg-background/50 p-2">
-                      <div
-                        v-for="file in season.files"
-                        :key="file"
-                        class="text-[11px] font-mono text-muted-foreground py-0.5 truncate"
-                        :title="file"
-                      >
-                        {{ file }}
-                      </div>
-                    </div>
-                    <div v-else class="text-xs text-muted-foreground italic">No files</div>
-                  </div>
-                </template>
-              </div>
-            </div>
-            <div v-if="filteredExistingShows.length === 0" class="p-3 text-center text-sm text-muted-foreground">
-              No matches
-            </div>
-          </div>
-        </div>
-
-        <!-- Existing movies (movies only, unchanged behavior) -->
-        <div v-if="mediaType === 'movie' && existingMovies.length" class="space-y-2">
-          <Label class="text-xs text-muted-foreground">Or select existing movie:</Label>
-
-          <div class="relative">
-            <Search class="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input v-model="showSearch" placeholder="Filter movies..." class="pl-9 h-9" />
-            <button
-              v-if="showSearch"
-              class="absolute right-2.5 top-2.5 text-muted-foreground hover:text-foreground"
-              @click="showSearch = ''"
-            >
-              <X class="h-4 w-4" />
-            </button>
-          </div>
-
-          <div class="max-h-64 overflow-y-auto rounded-md border">
-            <button
-              v-for="name in filteredExistingItems"
-              :key="name"
-              class="flex items-center gap-3 w-full p-2 text-left hover:bg-accent transition-colors border-b last:border-b-0"
-              :class="{ 'bg-accent': showName === name }"
-              @click="showName = name; showSearch = ''"
-            >
-              <div class="flex-shrink-0 w-8 h-12 rounded overflow-hidden bg-muted">
-                <img
-                  v-if="findShokoPoster(name)"
-                  :src="findShokoPoster(name)!"
-                  :alt="name"
-                  class="w-full h-full object-cover"
-                  loading="lazy"
-                />
-                <div v-else class="w-full h-full flex items-center justify-center">
-                  <Tv class="h-3 w-3 text-muted-foreground/40" />
-                </div>
-              </div>
-              <span class="text-sm font-medium truncate">{{ name }}</span>
-              <Check v-if="showName === name" class="h-4 w-4 text-primary ml-auto flex-shrink-0" />
-            </button>
-            <div v-if="filteredExistingItems.length === 0" class="p-3 text-center text-sm text-muted-foreground">
-              No matches
-            </div>
-          </div>
-        </div>
-
-        <div v-if="mediaType === 'series'" class="space-y-2">
-          <Label>Season Number</Label>
-          <div class="flex items-center gap-2">
-            <Input v-model.number="seasonNumber" type="number" min="0" max="99" class="w-24" />
-            <span v-if="nextAvailableSeason !== null && seasonNumber === nextAvailableSeason" class="text-xs text-muted-foreground">
-              Next available
-            </span>
-          </div>
-          <p v-if="duplicateSeasonWarning" class="text-sm text-amber-500">
-            {{ duplicateSeasonWarning }}
-          </p>
-          <p v-else-if="suggestedSeason !== null && suggestedSeason !== seasonNumber" class="text-sm text-muted-foreground">
-            Detected season: {{ suggestedSeason }}
-            <Button variant="link" size="sm" class="h-auto p-0 ml-1" @click="seasonNumber = suggestedSeason!">
-              Use this
-            </Button>
-          </p>
-        </div>
-
-        <Separator />
-
-        <div class="flex gap-2">
-          <Button variant="ghost" @click="step = 2">Back</Button>
-          <Button @click="goToConfirm" :disabled="!showName || loading">
-            {{ loading ? 'Checking...' : 'Preview' }}
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
-
-    <!-- Step 4: Confirm -->
-    <Card v-if="step === 4" glass>
-      <CardHeader>
-        <CardTitle>Confirm Link</CardTitle>
-        <CardDescription>Review before linking</CardDescription>
-      </CardHeader>
-      <CardContent class="space-y-4">
-        <div class="flex gap-4">
-          <!-- Poster in confirm -->
-          <div v-if="shokoAvailable && currentPoster" class="flex-shrink-0 w-24">
-            <div class="aspect-[2/3] rounded-md overflow-hidden bg-muted ring-1 ring-border/50">
-              <img :src="currentPoster" :alt="showName" class="w-full h-full object-cover" />
-            </div>
-          </div>
-
-          <div class="flex-1 grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <span class="text-muted-foreground">Source:</span>
-              <div class="font-medium">{{ selectedSource?.name }}</div>
-            </div>
-            <div>
-              <span class="text-muted-foreground">Type:</span>
-              <div class="font-medium capitalize">{{ mediaType }}</div>
-            </div>
-            <div>
-              <span class="text-muted-foreground">Name:</span>
-              <div class="font-medium">{{ showName }}</div>
-            </div>
-            <div v-if="mediaType === 'series'">
-              <span class="text-muted-foreground">Season:</span>
-              <div class="font-medium">{{ seasonNumber }}</div>
-            </div>
-          </div>
-        </div>
-
-        <Separator />
-
-        <div v-if="previewResult" class="space-y-2">
-          <h4 class="font-medium">Preview:</h4>
-          <div class="text-sm space-y-1">
-            <div>Destination: <code class="text-xs bg-muted px-1 py-0.5 rounded">{{ previewResult.destDir }}</code></div>
-            <div>Files to link: <strong>{{ previewResult.linked }}</strong></div>
-            <div v-if="previewResult.skipped">Already exists: {{ previewResult.skipped }}</div>
-            <div>Total size: {{ formatSize(previewResult.size) }}</div>
-          </div>
-        </div>
-
-        <Separator />
-
-        <div class="flex gap-2">
-          <Button variant="ghost" @click="step = 3">Back</Button>
-          <Button @click="executeLink" class="gap-2">
-            <Link class="h-4 w-4" />
-            Link Now
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
-
-    <!-- Step 5: Progress -->
-    <Card v-if="step === 5" glass>
-      <CardHeader>
-        <CardTitle class="flex items-center gap-2">
-          <Loader2 class="h-5 w-5 animate-spin" />
-          Linking...
-        </CardTitle>
-      </CardHeader>
-      <CardContent class="space-y-4">
-        <Progress :model-value="progressPercent" />
-        <div class="max-h-48 overflow-auto space-y-1 text-sm font-mono">
-          <div v-for="(p, i) in linkProgress" :key="i" class="flex items-center gap-2">
-            <Badge
-              :variant="p.status === 'linked' ? 'default' : p.status === 'skipped' ? 'secondary' : 'destructive'"
-              class="text-xs w-16 justify-center"
-            >
-              {{ p.status }}
-            </Badge>
-            <span class="truncate">{{ p.file }}</span>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-
-    <!-- Step 6: Done -->
-    <Card v-if="step === 6" glass>
-      <CardHeader>
-        <CardTitle class="flex items-center gap-2 text-green-600">
-          <Check class="h-5 w-5" />
-          Link Complete
-        </CardTitle>
-      </CardHeader>
-      <CardContent class="space-y-4" v-if="finalResult">
-        <div class="flex gap-4">
-          <div v-if="shokoAvailable && currentPoster" class="flex-shrink-0 w-20">
-            <div class="aspect-[2/3] rounded-md overflow-hidden bg-muted">
-              <img :src="currentPoster" :alt="showName" class="w-full h-full object-cover" />
-            </div>
-          </div>
-          <div class="flex-1">
-            <div class="grid grid-cols-3 gap-4 text-center">
-              <div>
-                <div class="text-2xl font-bold">{{ finalResult.linked }}</div>
-                <div class="text-sm text-muted-foreground">Linked</div>
-              </div>
-              <div>
-                <div class="text-2xl font-bold">{{ finalResult.skipped }}</div>
-                <div class="text-sm text-muted-foreground">Skipped</div>
-              </div>
-              <div>
-                <div class="text-2xl font-bold">{{ finalResult.failed }}</div>
-                <div class="text-sm text-muted-foreground">Failed</div>
-              </div>
-            </div>
-
-            <div class="text-sm mt-3">
-              <span class="text-muted-foreground">Destination:</span>
-              <code class="ml-1 text-xs bg-muted px-1 py-0.5 rounded">{{ finalResult.destDir }}</code>
-            </div>
-          </div>
-        </div>
-
-        <Separator />
-
-        <div class="flex gap-2">
-          <Button v-if="hasMoreInQueue" @click="nextInQueue" class="gap-2">
-            <ArrowRight class="h-4 w-4" />
-            Link Next ({{ bulkIndex + 2 }}/{{ bulkTotal }})
-          </Button>
-          <Button :variant="hasMoreInQueue ? 'outline' : 'default'" @click="reset">Link Another</Button>
-          <Button variant="outline" @click="router.push('/library')">View Library</Button>
-        </div>
-      </CardContent>
-    </Card>
+    <DoneStep
+      v-if="step === 6"
+      :final-result="finalResult"
+      :show-name="showName"
+      :shoko-available="shokoAvailable"
+      :current-poster="currentPoster"
+      :has-more-in-queue="hasMoreInQueue"
+      :bulk-index="bulkIndex"
+      :bulk-total="bulkTotal"
+      @next-in-queue="nextInQueue"
+      @reset="reset"
+      @view-library="router.push('/library')"
+    />
   </div>
 </template>
