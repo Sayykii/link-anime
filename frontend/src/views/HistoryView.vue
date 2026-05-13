@@ -2,6 +2,7 @@
 import { onMounted, ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useApi } from '@/composables/useApi'
+import { usePersistedRef } from '@/composables/usePersistedRef'
 import { formatSize } from '@/lib/utils'
 import type { HistoryEntry, UnlinkPreview } from '@/lib/types'
 import { Card, CardContent } from '@/components/ui/card'
@@ -36,8 +37,8 @@ const router = useRouter()
 const history = ref<HistoryEntry[]>([])
 const loading = ref(false)
 const searchQuery = ref('')
-const typeFilter = ref('all') // 'all' | 'series' | 'movie'
-const sortOrder = ref('newest') // 'newest' | 'oldest'
+const typeFilter = usePersistedRef('history:type', 'all')
+const sortOrder = usePersistedRef('history:sort', 'newest')
 
 const filteredHistory = computed(() => {
   let items = history.value

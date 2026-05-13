@@ -2,6 +2,7 @@
 import { onMounted, ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useApi } from '@/composables/useApi'
+import { usePersistedRef } from '@/composables/usePersistedRef'
 import { seriesPosterUrl } from '@/lib/utils'
 import type { ShokoSeries } from '@/lib/types'
 import { useLibraryStore } from '@/stores/library'
@@ -46,7 +47,7 @@ const router = useRouter()
 const library = useLibraryStore()
 
 const searchQuery = ref('')
-const activeTab = ref('shows')
+const activeTab = usePersistedRef('library:tab', 'shows')
 const loading = ref(true)
 const shokoAvailable = ref(false)
 const shokoSeries = ref<ShokoSeries[]>([])

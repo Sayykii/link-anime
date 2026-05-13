@@ -1,12 +1,15 @@
 <script setup lang="ts">
-import type { LinkResult } from '@/lib/types'
+import { ref, computed } from 'vue'
+import type { LinkResult, LinkProgress } from '@/lib/types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
-import { Check, ArrowRight } from 'lucide-vue-next'
+import { Check, ArrowRight, ChevronDown, ChevronUp } from 'lucide-vue-next'
 
-defineProps<{
+const props = defineProps<{
   finalResult: LinkResult | null
+  linkProgress: LinkProgress[]
   showName: string
   shokoAvailable: boolean
   currentPoster: string | null
@@ -20,6 +23,20 @@ defineEmits<{
   'reset': []
   'view-library': []
 }>()
+
+const showFileDetails = ref(false)
+
+const skippedFiles = computed(() =>
+  props.linkProgress.filter(p => p.status === 'skipped')
+)
+
+const failedFiles = computed(() =>
+  props.linkProgress.filter(p => p.status === 'failed')
+)
+
+const hasIssues = computed(() =>
+  skippedFiles.value.length > 0 || failedFiles.value.length > 0
+)
 </script>
 
 <template>
@@ -44,11 +61,11 @@ defineEmits<{
               <div class="text-sm text-muted-foreground">Linked</div>
             </div>
             <div>
-              <div class="text-2xl font-bold">{{ finalResult.skipped }}</div>
+              <div class="text-2xl font-bold" :class="finalResult.skipped > 0 ? 'text-amber-500' : ''">{{ finalResult.skipped }}</div>
               <div class="text-sm text-muted-foreground">Skipped</div>
             </div>
             <div>
-              <div class="text-2xl font-bold">{{ finalResult.failed }}</div>
+              <div class="text-2xl font-bold" :class="finalResult.failed > 0 ? 'text-destructive' : ''">{{ finalResult.failed }}</div>
               <div class="text-sm text-muted-foreground">Failed</div>
             </div>
           </div>
@@ -58,6 +75,49 @@ defineEmits<{
           </div>
         </div>
       </div>
+
+      <!-- File details (expandable when there are skipped/failed) -->
+      <div v-if="hasIssues && linkProgress.length > 0">
+        <button
+          class="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          @click="showFileDetails = !showFileDetails"
+        >
+          <ChevronDown v-if="!showFileDetails" class="h-4 w-4" />
+          <ChevronUp v-else class="h-4 w-4" />
+          View file details
+        </button>
+
+        <div v-if="showFileDetails" class="mt-2 space-y-3">
+          <div v-if="failedFiles.length > 0">
+            <div class="text-xs font-medium text-destructive mb-1">Failed</div>
+            <div class="max-h-32 overflow-auto rounded border bg-muted/30 p-2 space-y-0.5">
+              <div
+                v-for="(f, i) in failedFiles"
+                :key="i"
+                class="text-xs font-mono text-muted-foreground truncate"
+                :title="f.file"
+              >
+                {{ f.file }}
+              </div>
+            </div>
+          </div>
+
+          <div v-if="skippedFiles.length > 0">
+            <div class="text-xs font-medium text-amber-500 mb-1">Skipped (already exist)</div>
+            <div class="max-h-32 overflow-auto rounded border bg-muted/30 p-2 space-y-0.5">
+              <div
+                v-for="(f, i) in skippedFiles"
+                :key="i"
+                class="text-xs font-mono text-muted-foreground truncate"
+                :title="f.file"
+              >
+                {{ f.file }}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <Separator />
       <div class="flex gap-2">
         <Button v-if="hasMoreInQueue" @click="$emit('next-in-queue')" class="gap-2">

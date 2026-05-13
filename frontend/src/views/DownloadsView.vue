@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref, computed, watch } from 'vue'
 import { useApi } from '@/composables/useApi'
+import { usePersistedRef } from '@/composables/usePersistedRef'
 import { useWebSocket } from '@/composables/useWebSocket'
 import { useRouter } from 'vue-router'
 import { formatSize } from '@/lib/utils'
@@ -68,7 +69,7 @@ import EmptyState from '@/components/EmptyState.vue'
 const api = useApi()
 const router = useRouter()
 const { connected, connect, on } = useWebSocket()
-const activeTab = ref('local')
+const activeTab = usePersistedRef('downloads:tab', 'local')
 
 // Local downloads
 const downloads = ref<DownloadItem[]>([])
@@ -93,10 +94,10 @@ const addingMagnet = ref(false)
 const searchQuery = ref('')
 
 // Sort and filter state
-const localSort = ref('name-asc')
-const localTypeFilter = ref('all') // 'all' | 'folders' | 'files'
-const torrentSort = ref('name')
-const torrentStatusFilter = ref('all') // 'all' | 'downloading' | 'seeding' | 'paused' | 'completed'
+const localSort = usePersistedRef('downloads:localSort', 'name-asc')
+const localTypeFilter = usePersistedRef('downloads:localType', 'all')
+const torrentSort = usePersistedRef('downloads:torrentSort', 'name')
+const torrentStatusFilter = usePersistedRef('downloads:torrentStatus', 'all')
 
 // Linked file detection (based on actual file paths, not name matching)
 type LinkedSource = { id: number; mediaType: string; showName: string; season?: number }

@@ -411,6 +411,7 @@ function reset() {
     <DoneStep
       v-if="step === 6"
       :final-result="finalResult"
+      :link-progress="linkProgress"
       :show-name="showName"
       :shoko-available="shokoAvailable"
       :current-poster="currentPoster"
