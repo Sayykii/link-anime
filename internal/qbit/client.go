@@ -55,7 +55,9 @@ func (c *Client) Login() error {
 	defer resp.Body.Close()
 
 	body, _ := io.ReadAll(resp.Body)
-	if resp.StatusCode != 200 || string(body) != "Ok." {
+	// qBittorrent <5.2 returns 200 "Ok."/"Fails."; 5.2+ returns 204 on success, 401 on bad creds
+	ok := resp.StatusCode == 204 || (resp.StatusCode == 200 && string(body) == "Ok.")
+	if !ok {
 		return fmt.Errorf("qbit login failed: %s (status %d)", string(body), resp.StatusCode)
 	}
 
