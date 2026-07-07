@@ -250,7 +250,7 @@ func CountVideosIn(dir string) int {
 
 // --- helpers ---
 
-var reSeasonDir = regexp.MustCompile(`(?i)^(?:season\s*0*(\d+)|s0*(\d+))$`)
+var reSeasonDir = regexp.MustCompile(`(?i)^(?:season\s*0*(\d+)|s0*(\d+))(?:\s|$)`)
 
 func parseSeasonDir(name string) int {
 	m := reSeasonDir.FindStringSubmatch(name)
